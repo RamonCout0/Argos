@@ -2,7 +2,7 @@
 
 > O vigia de cem olhos. Confere brechas no teu projeto **antes** da produção — e **só roda em dev/local**.
 
-`v1.0` · Python 3.10+ · Windows / Linux · Licença MIT · Feito no Brasil, pensando na LGPD
+`v1.1` · Python 3.10+ · Windows / Linux · Licença MIT · Feito no Brasil, pensando na LGPD
 
 ## Instalação rápida
 
@@ -10,6 +10,7 @@
 git clone <url-do-repositorio> Argos && cd Argos
 pip install -r requirements.txt
 python cli.py demo --html demo.html     # relatorio de exemplo, sem instalar scanner nenhum
+python cli.py gui --demo                # interface grafica com dados de exemplo
 python -m pytest -q                     # roda a suite de testes
 ```
 
@@ -27,6 +28,26 @@ Argos é uma ferramenta open-source de segurança para desenvolvedores (especial
 2. **O conhecimento mora nos scanners.** Argos não entende linguagem nenhuma — ele é um maestro. Semgrep, Trivy, gitleaks, ZAP e cia. trazem a cobertura de linguagens e frameworks. Suportar stack nova = adicionar um adapter.
 3. **A matemática decide, a IA explica.** O score e o selo "ok pra prod" são cálculo puro sobre os findings reais. O Ollama entra só no fim, pra traduzir e sugerir fix — nunca pra julgar ou liberar deploy.
 4. **Privado por padrão.** O Ollama roda local. Um tool de LGPD não manda teu código vulnerável pra uma API na nuvem.
+
+---
+
+## Interface gráfica (checklist visual)
+
+```bash
+python cli.py gui            # abre a janela
+python cli.py gui --demo     # abre com dados de exemplo, sem rodar scanner
+```
+
+Feita em **Tkinter** (já vem com o Python, leve o bastante pra notebook de 4 GB) e com toda a arte em vetor, desenhada no próprio Canvas: o olho do Argos, que pisca e procura enquanto varre, com a íris roxa parado, verde quando aprova e vermelha quando bloqueia; a barra de vida segmentada; um ícone por severidade, com forma e cor; as caixinhas e o anel de progresso.
+
+- **Checklist de brechas:** marque o que você já corrigiu. A nota **não** muda com a marcação — só quando o re-scan confirmar. No scan seguinte, o que sumiu aparece como resolvido e a marca é limpa sozinha.
+- **Checklist LGPD:** os itens manuais, salvos por projeto.
+- **Aceitar como falso positivo:** direto do painel de detalhes, com motivo e prazo (o mesmo `argos-aceitos.json` da CLI).
+- **Exportar HTML:** o mesmo relatório offline da CLI.
+
+No Linux, o Tkinter pode precisar do pacote do sistema: `sudo apt install python3-tk`. As marcações ficam em `.argos_cache/checklist.json`, fora do git.
+
+**Dica pra projetos Django + Angular (ex.: DRF na porta 8000 e `ng serve` na 4200):** aponte a pasta do projeto e as duas portas. O `ng serve` por padrão escuta só em localhost; se aparecer exposto, procure um `--host 0.0.0.0` esquecido. As dependências do Angular não passam pelo pip-audit: rode `npm audit` na pasta do front à parte.
 
 ---
 
@@ -127,6 +148,10 @@ argos/
     contexto.py        # trecho do codigo com segredos mascarados
     ollama.py          # cliente do Ollama, preso a endereco local
     narrator.py        # a voz: explica e sugere, nunca decide
+  gui/
+    app.py             # a janela (Tkinter), scan numa thread separada
+    arte.py            # arte vetorial: olho, barra de vida, icones, botoes
+    estado.py          # logica do checklist (marcas, resolvidos, por projeto)
   config.py            # le variaveis do ambiente ou do .env
 cli.py                 # ponto de entrada
 exemplos/              # projeto vulneravel de proposito, pra testar

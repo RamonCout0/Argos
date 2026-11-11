@@ -19,6 +19,9 @@ Riscos aceitos (falso positivo), com motivo e prazo:
   python cli.py aceitar CODE-S002 --motivo "eval so roda em teste" --dias 30
   python cli.py aceitos
 
+Interface grafica:
+  python cli.py gui [--demo]                 -> checklist visual (Tkinter)
+
 Outros:
   python cli.py demo [--html demo.html]      -> relatorio de exemplo (sem scanner)
   python cli.py ia-status                    -> confere o Ollama local
@@ -69,33 +72,33 @@ def _findings_demo() -> list[Finding]:
     return [
         Finding(
             id="SECRET-001",
-            titulo="Chave de API hardcoded no codigo",
+            titulo="Chave de API escrita direto no código",
             severidade=Severidade.CRITICO,
             categoria="CWE-798",
             origem="gitleaks",
             local="config/settings.py:42",
             evidencia="API_KEY = 'sk-l***e1'",
             lentes=[Lente.CRITICO, Lente.LGPD],
-            fix=Fix(FixTipo.IA, "Mover pra variavel de ambiente (.env).",
+            fix=Fix(FixTipo.IA, "Mover pra variável de ambiente (.env).",
                     "API_KEY = os.getenv('API_KEY')"),
-            verificacao="re-rodar gitleaks -> 0 ocorrencias",
+            verificacao="re-rodar gitleaks → 0 ocorrências",
         ),
         Finding(
             id="CONF-002",
-            titulo="DEBUG=True vaza stacktrace em producao",
+            titulo="DEBUG=True vaza o stacktrace em produção",
             severidade=Severidade.ALTO,
             categoria="CWE-489",
             origem="semgrep",
             local="config/settings.py:12",
             evidencia="DEBUG = True",
             lentes=[Lente.CRITICO],
-            fix=Fix(FixTipo.IA, "Ler de env, default False.",
+            fix=Fix(FixTipo.IA, "Ler de variável de ambiente, com padrão False.",
                     "DEBUG = os.getenv('DEBUG', 'False') == 'True'"),
-            verificacao="re-rodar semgrep -> regra django-debug-true limpa",
+            verificacao="re-rodar semgrep → regra django-debug-true limpa",
         ),
         Finding(
             id="DEP-003",
-            titulo="Dependencia 'requests 2.19' com CVE conhecido",
+            titulo="Dependência 'requests 2.19' com CVE conhecido",
             severidade=Severidade.MEDIO,
             categoria="CVE-2023-32681",
             origem="pip-audit",
@@ -103,22 +106,22 @@ def _findings_demo() -> list[Finding]:
             lentes=[Lente.CRITICO],
             fix=Fix(FixTipo.DETERMINISTICO, "Subir para requests >= 2.31.0.",
                     "requests==2.31.0"),
-            verificacao="re-rodar pip-audit -> sem CVE nessa dependencia",
+            verificacao="re-rodar pip-audit → sem CVE nessa dependência",
         ),
         Finding(
             id="NET-004",
-            titulo="Login sem rate limit (brute force livre)",
+            titulo="Login sem limite de tentativas (brute force livre)",
             severidade=Severidade.MEDIO,
             categoria="CWE-307",
             origem="exemplo",
             local="POST /api/login",
             lentes=[Lente.BOT],
-            fix=Fix(FixTipo.IA, "Adicionar rate limit por IP no endpoint de login."),
-            verificacao="mandar N requests rapidos -> deve bloquear",
+            fix=Fix(FixTipo.IA, "Limitar tentativas por IP no endpoint de login."),
+            verificacao="mandar várias tentativas rápidas → deve bloquear",
         ),
         Finding(
             id="NAT-005",
-            titulo="Porta 8000 escuta so na tua maquina (ok)",
+            titulo="Porta 8000 escuta só na tua máquina (ok)",
             severidade=Severidade.INFO,
             categoria="INVENTARIO",
             origem="portas",
@@ -295,6 +298,20 @@ def cmd_auditar(args) -> int:
     return _finalizar(auditar(args.pasta, nativo, trafego), args, alvo=alvo)
 
 
+def cmd_gui(args) -> int:
+    try:
+        from argos.gui.app import main as gui_main
+    except ImportError:
+        print("A interface precisa do Tkinter. No Linux: sudo apt install python3-tk")
+        return 1
+    demo = None
+    if args.demo:
+        demo = enriquecer(_findings_demo())
+        narrar(demo, None)
+    gui_main(demo)
+    return 0
+
+
 def cmd_aceitar(args) -> int:
     fp, titulo = args.alvo, ""
     if "|" not in args.alvo:  # e um ID do ultimo relatorio
@@ -423,6 +440,10 @@ def build_parser() -> argparse.ArgumentParser:
     tr.add_argument("--listar-interfaces", action="store_true")
     comuns(tr)
     tr.set_defaults(func=cmd_trafego)
+
+    gu = sub.add_parser("gui", help="abre a interface grafica (checklist visual)")
+    gu.add_argument("--demo", action="store_true", help="abre com dados de exemplo, sem scanner")
+    gu.set_defaults(func=cmd_gui)
 
     ac = sub.add_parser("aceitar", help="aceita um risco (falso positivo) com motivo e prazo")
     ac.add_argument("alvo", help="ID do ultimo relatorio (ex.: CODE-S002) ou fingerprint")

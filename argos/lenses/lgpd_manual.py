@@ -12,23 +12,23 @@ Referências: Lei 13.709/2018 (LGPD) e Resolução CD/ANPD nº 15/2024.
 from __future__ import annotations
 
 AVISO = (
-    "Confirmacao manual: o Argos nao verifica estes itens sozinho "
-    "e nao substitui orientacao juridica."
+    "Confirmação manual: o Argos não verifica estes itens sozinho "
+    "e não substitui orientação jurídica."
 )
 
 CHECKLIST_LGPD: list[tuple[str, str]] = [
     ("Base legal",
-     "Cada dado pessoal coletado tem base legal definida (ex.: consentimento) - art. 7."),
-    ("Minimizacao",
-     "So coleta o necessario pra finalidade (principio da necessidade) - art. 6, III."),
+     "Cada dado pessoal coletado tem base legal definida (ex.: consentimento) — art. 7º."),
+    ("Minimização",
+     "Só coleta o necessário pra finalidade (princípio da necessidade) — art. 6º, III."),
     ("Direitos do titular",
-     "Existe canal pro titular pedir acesso, correcao e eliminacao dos dados - art. 18."),
-    ("Retencao",
-     "Prazo de guarda definido, com eliminacao ou anonimizacao ao fim - arts. 15 e 16."),
-    ("Seguranca desde a concepcao",
-     "Medidas tecnicas e administrativas pensadas desde o design - art. 46, par. 2."),
+     "Existe canal pro titular pedir acesso, correção e eliminação dos dados — art. 18."),
+    ("Retenção",
+     "Prazo de guarda definido, com eliminação ou anonimização ao fim — arts. 15 e 16."),
+    ("Segurança desde a concepção",
+     "Medidas técnicas e administrativas pensadas desde o design — art. 46, § 2º."),
     ("Plano de incidente",
-     "Roteiro pra comunicar ANPD e titulares em ate 3 dias uteis - art. 48 + Res. CD/ANPD 15/2024."),
+     "Roteiro pra comunicar ANPD e titulares em até 3 dias úteis — art. 48 + Res. CD/ANPD 15/2024."),
     ("Logs limpos",
-     "Logs e mensagens de erro nao expoem CPF, e-mail, senha ou token."),
+     "Logs e mensagens de erro não expõem CPF, e-mail, senha ou token."),
 ]
