@@ -1,0 +1,4 @@
+# Dependencias pinadas em versoes com CVE conhecido, de proposito,
+# pra o pip-audit ter o que achar. NAO use essas versoes em projeto real.
+requests==2.19.1
+jinja2==2.10

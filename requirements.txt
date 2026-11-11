@@ -1,0 +1,16 @@
+# O nucleo do Argos roda so com a biblioteca padrao do Python.
+# Nada a instalar pra rodar `python cli.py demo`.
+
+# Para rodar os testes:
+pytest>=8.0
+
+# Fase 5 - trilha nativa (portas do app rodando):
+psutil>=5.9
+
+# Ferramentas externas (instaladas fora do pip, cada uma opcional):
+#   gitleaks  -> winget install gitleaks
+#   pip-audit -> pip install pip-audit
+#   semgrep   -> wsl pip install semgrep
+#   nmap      -> https://nmap.org/download
+#   tshark    -> vem com o Wireshark: https://www.wireshark.org/download.html
+#   Ollama    -> https://ollama.com (Fase 4, opcional)
