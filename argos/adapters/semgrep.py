@@ -19,7 +19,8 @@ import re
 import shutil
 import subprocess
 
-from .base import Adapter, Contexto, achar_executavel
+from .base import Adapter, Contexto, achar_executavel, caminho_relativo
+from ..core import progresso
 from ..schema import Finding, Severidade, Lente, Fix, FixTipo
 
 _SEV = {
@@ -46,7 +47,7 @@ def _wsl_para_win(caminho: str) -> str:
     return caminho
 
 
-def parse_relatorio(dados: dict, traduzir=None) -> list[Finding]:
+def parse_relatorio(dados: dict, traduzir=None, raiz=None) -> list[Finding]:
     """json do semgrep -> lista de Findings. Função pura (testável sem a ferramenta)."""
     traduzir = traduzir or (lambda p: p)
     findings: list[Finding] = []
@@ -60,7 +61,7 @@ def parse_relatorio(dados: dict, traduzir=None) -> list[Finding]:
         check_id = r.get("check_id", "semgrep")
         categoria = cwe[0].split(":")[0].strip() if cwe else check_id.split(".")[-1]
         msg = (extra.get("message") or check_id or "Problema de codigo").strip()
-        caminho = traduzir(r.get("path", "?"))
+        caminho = caminho_relativo(traduzir(r.get("path", "?")), raiz)
         linha = (r.get("start") or {}).get("line", "?")
         findings.append(
             Finding(
@@ -113,8 +114,9 @@ class SemgrepAdapter(Adapter):
         if os.name != "nt":
             return "Instale: pip install semgrep"
         return (
-            "Instale o semgrep no WSL: abra o 'wsl' e rode 'pip install semgrep' "
-            "(ou rode o Argos inteiro dentro do WSL)."
+            "Instale o semgrep no WSL (Ubuntu): sudo python3 -m venv /opt/semgrep && "
+            "sudo /opt/semgrep/bin/pip install semgrep && "
+            "sudo ln -sf /opt/semgrep/bin/semgrep /usr/local/bin/semgrep"
         )
 
     def escanear(self, ctx: Contexto) -> list[Finding]:
@@ -124,17 +126,21 @@ class SemgrepAdapter(Adapter):
                 "semgrep nao encontrado (nem nativo, nem via WSL). " + self.como_instalar()
             )
 
-        # "auto" exige metrics ligado; com --metrics=off usamos o ruleset padrao do registry.
-        base = ["semgrep", "scan", "--config", "p/default", "--json", "--metrics=off", "--quiet"]
+        # "--config auto" exige telemetria ligada; com --metrics=off usamos regras fixas
+        # do registro (precisa de internet): padrao poliglota + Django + segredos.
+        regras = []
+        for r in ("p/default", "p/django", "p/secrets"):
+            regras += ["--config", r]
+        base = ["semgrep", "scan", *regras, "--json", "--metrics=off", "--quiet"]
         if self._modo == "wsl":
             alvo = _win_para_wsl(os.path.abspath(ctx.projeto))
             cmd = ["wsl"] + base + [alvo]
             traduzir = _wsl_para_win
         else:
-            cmd = [self._exe] + base[1:] + [ctx.projeto]
+            cmd = [self._exe or "semgrep"] + base[1:] + [ctx.projeto]
             traduzir = None
 
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        proc = progresso.rodar(cmd)
         # semgrep: 0 = ok, 1 = achou algo. >=2 = erro de verdade.
         if proc.returncode not in (0, 1):
             raise RuntimeError(
@@ -143,4 +149,4 @@ class SemgrepAdapter(Adapter):
         saida = proc.stdout.strip()
         if not saida:
             return []
-        return parse_relatorio(json.loads(saida), traduzir=traduzir)
+        return parse_relatorio(json.loads(saida), traduzir=traduzir, raiz=os.path.abspath(ctx.projeto))

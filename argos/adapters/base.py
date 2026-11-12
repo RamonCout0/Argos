@@ -36,6 +36,19 @@ def achar_executavel(nome: str) -> Optional[str]:
     return shutil.which(nome, path=os.fspath(pasta))
 
 
+def caminho_relativo(arquivo: str, raiz: Optional[str]) -> str:
+    """Caminho curto, relativo à pasta auditada (com '/').
+    (C:/Users/.../tevejo/src/x.py -> src/x.py; fora da pasta, fica como está.)"""
+    if raiz and arquivo and os.path.isabs(arquivo):
+        try:
+            rel = os.path.relpath(arquivo, raiz)
+            if not rel.startswith(".."):
+                return rel.replace("\\", "/")
+        except ValueError:  # outro disco no Windows
+            pass
+    return arquivo or "?"
+
+
 @dataclass
 class Contexto:
     """O que um scanner recebe pra trabalhar."""

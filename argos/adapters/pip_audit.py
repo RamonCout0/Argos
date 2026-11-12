@@ -17,9 +17,11 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 
 from .base import Adapter, Contexto, achar_executavel
+from ..core import progresso
 from ..schema import Finding, Severidade, Lente, Fix, FixTipo
 
 
@@ -69,11 +71,22 @@ def parse_relatorio(dados: dict, origem_arquivo: str = "requirements.txt") -> li
 class PipAuditAdapter(Adapter):
     nome = "pip-audit"
 
+    def _cmd(self) -> list[str] | None:
+        """O executavel no PATH, ou o modulo instalado no Python que roda o Argos (venv)."""
+        exe = achar_executavel("pip-audit")
+        if exe:
+            return [exe]
+        import importlib.util
+        import sys
+        if importlib.util.find_spec("pip_audit") is not None:
+            return [sys.executable, "-m", "pip_audit"]
+        return None
+
     def disponivel(self) -> bool:
-        return achar_executavel("pip-audit") is not None
+        return self._cmd() is not None
 
     def como_instalar(self) -> str:
-        return "Instale: pip install pip-audit  (precisa de internet pra consultar a base de CVEs)."
+        return "Instale no mesmo Python do Argos: python -m pip install pip-audit  (precisa de internet pra consultar a base de CVEs)."
 
     def _requirements(self, projeto: str) -> str | None:
         caminho = os.path.join(projeto, "requirements.txt")
@@ -86,8 +99,8 @@ class PipAuditAdapter(Adapter):
         if not req:
             return []  # sem requirements.txt, nada a auditar nesta fase
 
-        cmd = [achar_executavel("pip-audit"), "-r", req, "-f", "json", "--progress-spinner", "off"]
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        cmd = self._cmd() + ["-r", req, "-f", "json", "--progress-spinner", "off"]
+        proc = progresso.rodar(cmd)
         # pip-audit: 0 = limpo, 1 = achou vulnerabilidade. O JSON sai no stdout.
         if proc.returncode not in (0, 1):
             raise RuntimeError(

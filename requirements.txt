@@ -7,6 +7,9 @@ pytest>=8.0
 # Fase 5 - trilha nativa (portas do app rodando):
 psutil>=5.9
 
+# Interface nova (v2.0). No Linux tambem: sudo apt install python3-gi gir1.2-webkit2-4.1
+pywebview>=5.0
+
 # Ferramentas externas (instaladas fora do pip, cada uma opcional):
 #   gitleaks  -> winget install gitleaks
 #   pip-audit -> pip install pip-audit

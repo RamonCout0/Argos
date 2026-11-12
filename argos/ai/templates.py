@@ -77,11 +77,88 @@ TEMPLATES: dict[str, tuple[str, str]] = {
         "vazamento disso é incidente de LGPD.",
         "HTTPS em todo endpoint que recebe dado pessoal e nunca colocar CPF ou e-mail na URL.",
     ),
+    "CWE-1427": (
+        "A IA não separa instrução de conteúdo: um texto vindo do usuário ou de um documento "
+        "consegue mudar o comportamento dela ou fazer ela revelar o que devia guardar.",
+        "Regras só no papel 'system', documentos entre delimitadores e tratados como dado, "
+        "nenhum segredo no prompt e validação da saída antes de usar o resultado.",
+    ),
     "CWE-489": (
         "Modo debug ligado mostra stacktrace, variáveis e configuração pra qualquer visitante.",
         "Ler o debug de variável de ambiente com padrão desligado (DEBUG=False em produção).",
     ),
 }
+
+TEMPLATES.update({
+    "CWE-538": (
+        "Arquivo sensível publicado: qualquer um que adivinhe o endereço baixa. Bots testam "
+        "/.env e companhia o tempo todo, em todo site.",
+        "Tirar da pasta publicada, bloquear no servidor e trocar qualquer segredo que estava nele.",
+    ),
+    "CWE-527": (
+        "Com a pasta .git publicada, dá pra reconstruir o código inteiro e todo o histórico, "
+        "inclusive senhas que já foram apagadas.",
+        "Nunca publicar a pasta do repositório; o deploy deve copiar só o necessário.",
+    ),
+    "CWE-548": (
+        "Listagem de pasta aberta mostra todos os arquivos, inclusive uploads de usuários "
+        "(documento, foto, comprovante): vazamento de dado pessoal.",
+        "Desligar a listagem e servir uploads com controle de acesso.",
+    ),
+    "CWE-693": (
+        "Falta uma camada de proteção do navegador: não é a brecha em si, mas aumenta o estrago "
+        "de outras (como um XSS).",
+        "Configurar os cabeçalhos de segurança (no Django, a maioria vem do SecurityMiddleware).",
+    ),
+    "CWE-1021": (
+        "Outro site pode exibir o teu dentro de um iframe invisível e enganar o usuário pra clicar "
+        "onde não queria (clickjacking).",
+        "X-Frame-Options: DENY ou frame-ancestors na CSP.",
+    ),
+    "CWE-942": (
+        "CORS aberto deixa qualquer site fazer requisições pro teu backend em nome de quem "
+        "está logado e ler a resposta.",
+        "Permitir só as origens do teu próprio front.",
+    ),
+    "CWE-1004": (
+        "Cookie de sessão legível por JavaScript: um único XSS basta pra roubar a conta.",
+        "Marcar o cookie de sessão como HttpOnly.",
+    ),
+    "CWE-614": (
+        "Cookie sem Secure pode viajar por HTTP e ser capturado no caminho.",
+        "Marcar como Secure em produção (sempre HTTPS).",
+    ),
+    "CWE-1275": (
+        "Cookie sem SameSite vai junto em requisições disparadas por outros sites (base do CSRF).",
+        "SameSite=Lax ou Strict.",
+    ),
+    "CWE-540": (
+        "O source map devolve o código-fonte original do front, com nomes e comentários: "
+        "facilita achar falha e rota escondida.",
+        "Não publicar .map em produção.",
+    ),
+    "CWE-497": (
+        "Revelar software e versão ajuda o atacante a escolher qual vulnerabilidade conhecida tentar.",
+        "Esconder versão em cabeçalhos e páginas de status.",
+    ),
+    "CWE-16": (
+        "Configuração permissiva demais, que abre espaço pra ataques que o framework já bloquearia.",
+        "Restringir ao mínimo necessário.",
+    ),
+    "CWE-862": (
+        "Endpoint sem checar permissão: quem manda a requisição direto (sem passar pelo front) "
+        "lê ou altera dados que não devia.",
+        "Permissão fechada por padrão e checada no backend em toda view.",
+    ),
+    "ARGOS-ADMIN-PADRAO": (
+        "O /admin/ é o primeiro lugar que todo bot testa senha.",
+        "Trocar o caminho e limitar tentativas (django-axes).",
+    ),
+    "ARGOS-API-DOCS": (
+        "A documentação pública da API entrega o mapa de todos os endpoints.",
+        "Exigir login pra ver a documentação em produção.",
+    ),
+})
 
 GENERICO = (
     "Padrão de código conhecido por abrir brecha de segurança.",

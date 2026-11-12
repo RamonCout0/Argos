@@ -19,6 +19,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 
 from .base import Adapter, Contexto
+from ..core import progresso
 from ..schema import Finding, Severidade, Fix, FixTipo
 from ..guard.target_lock import validar_alvo
 from ..native.riscos import risco_da_porta
@@ -107,7 +108,7 @@ class NmapAdapter(Adapter):
             "-p", ",".join(str(p) for p in sorted(set(portas))),
             "-oX", "-", ip,
         ]
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        proc = progresso.rodar(cmd, timeout=300)
         if proc.returncode != 0:
             raise RuntimeError(f"nmap falhou ({proc.returncode}): {proc.stderr.strip()[:300]}")
         return parse_xml(proc.stdout)

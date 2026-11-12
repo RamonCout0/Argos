@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Argos — o vigia de cem olhos</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body data-humor="repouso">
+<div class="aura" aria-hidden="true"></div>
+
+<div class="app">
+  <aside class="lateral">
+    <div class="marca">
+      <div class="olho olho-logo" id="olho-logo"></div>
+      <div class="marca-txt"><b>ARGOS</b><small id="versao">o vigia de cem olhos</small></div>
+    </div>
+
+    <nav id="nav">
+      <button class="nav ativo" data-view="auditoria">
+        <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Auditoria</span>
+      </button>
+      <button class="nav" data-view="brechas">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+        <span>Checklist</span><em class="badge" id="badge-brechas"></em>
+      </button>
+      <button class="nav" data-view="lgpd">
+        <svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span>LGPD</span>
+      </button>
+      <button class="nav" data-view="ia">
+        <svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M12 3v4M9 12h.01M15 12h.01M9 15.5h6"/></svg>
+        <span>Teste de IA</span><em class="badge" id="badge-ia"></em>
+      </button>
+      <button class="nav" data-view="scanners">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>Scanners</span>
+      </button>
+    </nav>
+
+    <div class="lateral-rodape">
+      <div class="estado-pill"><i></i><span id="estado-txt">Em repouso</span></div>
+      <small>só dev/local · <span id="versao-num"></span></small>
+    </div>
+  </aside>
+
+  <main id="principal">
+
+    <!-- ===================== AUDITORIA ===================== -->
+    <section class="view ativa" id="view-auditoria">
+      <header class="topo-view">
+        <div><h2>Auditoria</h2><p>Código, portas, tráfego e web do teu projeto, num veredito só.</p></div>
+        <button class="btn" id="btn-exportar"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Exportar HTML</button>
+      </header>
+
+      <div class="grade-aud">
+        <div class="card hero">
+          <div class="palco" id="palco"></div>
+          <h1 class="frase" id="frase">Em repouso</h1>
+          <p class="subfrase" id="subfrase">Escolha o que vigiar e clique em Auditar.</p>
+        </div>
+
+        <div class="card placar">
+          <div class="placar-topo">
+            <div class="anel">
+              <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" class="anel-fundo"/>
+                <circle cx="60" cy="60" r="50" class="anel-valor" id="anel-valor"/>
+              </svg>
+              <div class="anel-num"><b id="score">—</b><small>/100</small></div>
+            </div>
+            <div class="placar-info">
+              <small class="rotulo">HP DO DEPLOY</small>
+              <div class="selo" id="selo">SEM AUDITORIA</div>
+              <p class="placar-motivo" id="placar-motivo">O veredito aparece aqui.</p>
+            </div>
+          </div>
+          <div class="hp" id="hp"></div>
+          <div class="sev-chips" id="sev-chips"></div>
+          <div class="progresso">
+            <div class="progresso-txt"><span id="prog-txt">Checklist: 0 de 0</span><small>a nota muda quando o re-scan confirma</small></div>
+            <div class="barra"><i id="prog-barra"></i></div>
+          </div>
+        </div>
+
+        <div class="card form">
+          <h3>Nova auditoria</h3>
+          <label class="campo"><span>Pasta do projeto</span>
+            <div class="linha-campo"><input id="in-pasta" placeholder="ex.: /home/haji/Documentos/tevejo"><button class="btn" data-escolher="pasta">Escolher</button></div>
+          </label>
+          <div class="duas-colunas">
+            <label class="campo"><span>Portas do app rodando</span><input id="in-portas" placeholder="ex.: 8000, 4200"></label>
+            <label class="campo"><span>Captura .pcap <em>opcional</em></span>
+              <div class="linha-campo"><input id="in-pcap" placeholder="arquivo do Wireshark"><button class="btn" data-escolher="pcap">…</button></div>
+            </label>
+          </div>
+          <label class="campo"><span>URLs do app rodando <em>trilha web · opcional</em></span>
+            <input id="in-urls" placeholder="ex.: http://127.0.0.1:8000, http://127.0.0.1:4200"></label>
+          <div class="chaves">
+            <label class="chave"><input type="checkbox" id="in-rede"><i class="trilho"></i><span>Olhar também pela rede (nmap)</span></label>
+            <label class="chave"><input type="checkbox" id="in-ia"><i class="trilho"></i><span>Explicar com IA local (Ollama)</span></label>
+          </div>
+          <button class="btn-primario" id="btn-auditar"><span>Auditar</span></button>
+        </div>
+
+        <div class="card resumo">
+          <h3>Desde o último scan</h3>
+          <div id="resumo"><p class="vazio">Rode uma auditoria pra ver o que mudou.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CHECKLIST DE BRECHAS ===================== -->
+    <section class="view" id="view-brechas">
+      <header class="topo-view">
+        <div><h2>Checklist de brechas</h2><p>Marque o que já corrigiu. O re-scan é quem confirma.</p></div>
+        <div class="filtros" id="filtros">
+          <button class="chip ativo" data-filtro="todas">Todas</button>
+          <button class="chip" data-filtro="critico">Crítico</button>
+          <button class="chip" data-filtro="lgpd">LGPD</button>
+          <button class="chip" data-filtro="bot">Bot</button>
+          <button class="chip" data-filtro="info">Info / ok</button>
+        </div>
+      </header>
+      <div class="grade-lista">
+        <div class="lista" id="lista-brechas"></div>
+        <aside class="card detalhe" id="detalhe-brechas"></aside>
+      </div>
+    </section>
+
+    <!-- ===================== LGPD ===================== -->
+    <section class="view" id="view-lgpd">
+      <header class="topo-view">
+        <div><h2>Checklist LGPD</h2><p id="lgpd-aviso"></p></div>
+        <div class="lgpd-cont" id="lgpd-cont"></div>
+      </header>
+      <div class="lista" id="lista-lgpd"></div>
+    </section>
+
+    <!-- ===================== TESTE DE IA ===================== -->
+    <section class="view" id="view-ia">
+      <header class="topo-view">
+        <div><h2>Teste de IA</h2><p>A tua IA resiste a prompt injection? Só endereços locais.</p></div>
+      </header>
+      <div class="grade-ia">
+        <div class="card form-ia">
+          <div class="segmentado" id="seg-ia">
+            <button class="ativo" data-modo="ollama">Direto no Ollama</button>
+            <button data-modo="http">Endpoint do app</button>
+          </div>
+
+          <div id="modo-ollama">
+            <label class="campo"><span>Modelo</span><input id="ia-modelo"></label>
+            <label class="campo"><span>Prompt de sistema da tua IA</span>
+              <textarea id="ia-sistema" rows="9" placeholder="Cole aqui o prompt de sistema (ex.: o da Alice)…"></textarea>
+            </label>
+            <div class="linha-botoes">
+              <button class="btn" id="ia-arquivo">Carregar arquivo</button>
+              <button class="btn" data-exemplo="fraco">Exemplo fraco</button>
+              <button class="btn" data-exemplo="reforcado">Exemplo reforçado</button>
+            </div>
+          </div>
+
+          <div id="modo-http" class="oculto">
+            <label class="campo"><span>URL local do teu app</span><input id="ia-url" placeholder="http://127.0.0.1:5000/chat"></label>
+            <div class="duas-colunas">
+              <label class="campo"><span>Campo da mensagem</span><input id="ia-entrada" value="mensagem"></label>
+              <label class="campo"><span>Campo da resposta</span><input id="ia-saida" value="resposta"></label>
+            </div>
+            <label class="campo"><span>Canário plantado no prompt do app <em>opcional</em></span>
+              <div class="linha-campo"><input id="ia-canario" placeholder="ARGOS-CANARIO-…"><button class="btn" id="ia-gerar">Gerar</button></div>
+            </label>
+          </div>
+
+          <p class="nota">As sondagens são inofensivas: só tentam fazer a IA dizer um marcador sem sentido ou revelar um canário falso. O que se mede é se ela obedece quem não devia.</p>
+          <button class="btn-primario" id="btn-ia"><span>Testar minha IA</span></button>
+        </div>
+
+        <div class="ia-resultado">
+          <div class="tiles" id="tiles-ia"></div>
+          <div class="grade-lista grade-lista-ia">
+            <div class="lista" id="lista-ia"></div>
+            <aside class="card detalhe" id="detalhe-ia"></aside>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SCANNERS ===================== -->
+    <section class="view" id="view-scanners">
+      <header class="topo-view"><div><h2>Scanners</h2><p>Quem participou da última auditoria e quem foi pulado.</p></div></header>
+      <div class="card" id="scanners"></div>
+    </section>
+  </main>
+</div>
+
+<div class="modal oculto" id="modal">
+  <div class="card modal-card">
+    <h3>Aceitar como falso positivo</h3>
+    <p class="modal-tit" id="modal-tit"></p>
+    <label class="campo"><span>Por que isso não é um problema? <em>mín. 10 letras</em></span><textarea id="modal-motivo" rows="3"></textarea></label>
+    <label class="campo"><span>Vale por quantos dias? <em>1 a 90</em></span><input id="modal-dias" value="30"></label>
+    <p class="erro" id="modal-erro"></p>
+    <div class="linha-botoes fim">
+      <button class="btn" id="modal-cancelar">Cancelar</button>
+      <button class="btn btn-cor" id="modal-ok">Aceitar risco</button>
+    </div>
+  </div>
+</div>
+
+<section class="console oculto" id="console" aria-live="polite">
+  <header class="console-topo">
+    <span class="console-luz" id="console-luz" aria-hidden="true"></span>
+    <b class="console-tit" id="console-tit">Vigiando</b>
+    <span class="console-tempo" id="console-tempo">0 s</span>
+    <span class="console-agora" id="console-agora">começando…</span>
+    <button class="btn btn-mini" id="console-recolher">Esconder log</button>
+    <button class="btn btn-mini btn-perigo" id="btn-cancelar">Cancelar</button>
+    <button class="btn btn-mini btn-x oculto" id="console-fechar" aria-label="Fechar o log">✕</button>
+  </header>
+  <ol class="console-linhas" id="console-linhas"></ol>
+</section>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="olho.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -19,6 +19,7 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+from ..core import progresso
 from ..schema import Finding, FixTipo, Severidade
 from .contexto import trecho_de
 from .templates import explicacao_base
@@ -125,7 +126,9 @@ def narrar(
     memoria = _ler_cache(cache)
     modelo = getattr(cliente, "modelo", "?")
 
-    for f in alvos:
+    for i, f in enumerate(alvos, start=1):
+        progresso.checar()
+        progresso.avisar(f"IA ({modelo}): explicando {f.id} ({i}/{len(alvos)})", "ia")
         trecho = trecho_de(f, raiz=raiz)
         chave = _chave_cache(modelo, f, trecho)
         if chave in memoria:
@@ -133,7 +136,7 @@ def narrar(
             est.do_cache += 1
         else:
             try:
-                exp, cor = _limpar(cliente.gerar_json(SISTEMA, montar_prompt(f, trecho)))
+                exp, cor = _limpar(progresso.esperar(cliente.gerar_json, SISTEMA, montar_prompt(f, trecho)))
             except Exception:
                 est.falhas += 1
                 continue

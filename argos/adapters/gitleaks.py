@@ -21,7 +21,8 @@ import shutil
 import subprocess
 import tempfile
 
-from .base import Adapter, Contexto
+from .base import Adapter, Contexto, caminho_relativo
+from ..core import progresso
 from ..schema import Finding, Severidade, Lente, Fix, FixTipo
 
 
@@ -34,14 +35,42 @@ def _mascarar(segredo: str) -> str:
     return f"{s[:4]}***{s[-2:]}"
 
 
-def parse_relatorio(dados: list[dict]) -> list[Finding]:
+# o gitleaks descreve em ingles e por extenso; aqui vira um titulo curto em portugues
+_TITULOS = {
+    "generic-api-key": "Chave de API escrita no código",
+    "aws-access-token": "Chave da AWS escrita no código",
+    "github-pat": "Token do GitHub escrito no código",
+    "github-fine-grained-pat": "Token do GitHub escrito no código",
+    "gitlab-pat": "Token do GitLab escrito no código",
+    "private-key": "Chave privada dentro do projeto",
+    "jwt": "Token JWT escrito no código",
+    "slack-bot-token": "Token do Slack escrito no código",
+    "slack-webhook-url": "Webhook do Slack escrito no código",
+    "discord-api-token": "Token do Discord escrito no código",
+    "discord-client-secret": "Segredo do Discord escrito no código",
+    "stripe-access-token": "Chave do Stripe escrita no código",
+    "gcp-api-key": "Chave do Google Cloud escrita no código",
+    "openai-api-key": "Chave da OpenAI escrita no código",
+    "anthropic-api-key": "Chave da Anthropic escrita no código",
+    "telegram-bot-api-token": "Token de bot do Telegram escrito no código",
+}
+
+
+def _titulo(regra: str) -> str:
+    if regra in _TITULOS:
+        return _TITULOS[regra]
+    legivel = regra.replace("-", " ").replace("_", " ").strip() or "segredo"
+    return f"Segredo escrito no código ({legivel})"
+
+
+def parse_relatorio(dados: list[dict], raiz: str | None = None) -> list[Finding]:
     """json do gitleaks -> lista de Findings. Função pura (testável sem gitleaks)."""
     findings: list[Finding] = []
     for i, item in enumerate(dados, start=1):
-        arquivo = item.get("File", "?")
+        arquivo = caminho_relativo(item.get("File", "?"), raiz)
         linha = item.get("StartLine", item.get("Line", "?"))
         regra = item.get("RuleID") or item.get("Rule") or "segredo"
-        desc = item.get("Description") or f"Segredo detectado ({regra})"
+        desc = _titulo(regra)
         segredo = item.get("Secret", "")
         findings.append(
             Finding(
@@ -65,11 +94,27 @@ def parse_relatorio(dados: list[dict]) -> list[Finding]:
     return findings
 
 
+def _achar_gitleaks() -> str | None:
+    """PATH primeiro; no Windows, tambem onde o winget/choco instalam (o PATH novo so
+    vale em terminais abertos DEPOIS da instalacao)."""
+    achado = shutil.which("gitleaks")
+    if achado or os.name != "nt":
+        return achado
+    import glob
+    base = os.environ.get("LOCALAPPDATA", "")
+    candidatos = [os.path.join(base, "Microsoft", "WinGet", "Links", "gitleaks.exe")]
+    candidatos += glob.glob(os.path.join(base, "Microsoft", "WinGet", "Packages", "*itleaks*", "**",
+                                         "gitleaks.exe"), recursive=True)
+    candidatos.append(os.path.join(os.environ.get("ProgramData", "C:/ProgramData"), "chocolatey", "bin",
+                                   "gitleaks.exe"))
+    return next((c for c in candidatos if c and os.path.isfile(c)), None)
+
+
 class GitleaksAdapter(Adapter):
     nome = "gitleaks"
 
     def disponivel(self) -> bool:
-        return shutil.which("gitleaks") is not None
+        return _achar_gitleaks() is not None
 
     def como_instalar(self) -> str:
         return (
@@ -81,7 +126,7 @@ class GitleaksAdapter(Adapter):
         """Versões novas do gitleaks têm o subcomando `dir`. As antigas, não."""
         try:
             p = subprocess.run(
-                ["gitleaks", "dir", "--help"], capture_output=True, text=True
+                [_achar_gitleaks() or "gitleaks", "dir", "--help"], capture_output=True, text=True
             )
             return p.returncode == 0
         except Exception:
@@ -90,12 +135,12 @@ class GitleaksAdapter(Adapter):
     def _montar_comando(self, projeto: str, relatorio: str) -> list[str]:
         if self._suporta_dir():
             return [
-                "gitleaks", "dir", projeto,
+                _achar_gitleaks() or "gitleaks", "dir", projeto,
                 "--report-format", "json",
                 "--report-path", relatorio,
             ]
         return [
-            "gitleaks", "detect",
+            _achar_gitleaks() or "gitleaks", "detect",
             "--source", projeto,
             "--no-git",
             "--report-format", "json",
@@ -109,7 +154,7 @@ class GitleaksAdapter(Adapter):
         with tempfile.TemporaryDirectory() as tmp:
             relatorio = os.path.join(tmp, "gitleaks.json")
             cmd = self._montar_comando(ctx.projeto, relatorio)
-            proc = subprocess.run(cmd, capture_output=True, text=True)
+            proc = progresso.rodar(cmd)
             # gitleaks: 0 = limpo, 1 = achou vazamento. Ambos sao "rodou ok".
             if proc.returncode not in (0, 1):
                 raise RuntimeError(
@@ -122,4 +167,4 @@ class GitleaksAdapter(Adapter):
                 conteudo = fp.read().strip()
             if not conteudo or conteudo == "null":
                 return []
-            return parse_relatorio(json.loads(conteudo))
+            return parse_relatorio(json.loads(conteudo), raiz=os.path.abspath(ctx.projeto))

@@ -28,6 +28,7 @@ import subprocess
 from urllib.parse import urlsplit
 
 from .base import Adapter, Contexto
+from ..core import progresso
 from ..schema import Finding, Severidade, Fix, FixTipo
 from ..native.riscos import ip_e_local
 from ..native.sensiveis import detectar
@@ -161,7 +162,7 @@ class TsharkAdapter(Adapter):
     def escanear(self, ctx: Contexto) -> list[Finding]:
         opcoes = ctx.opcoes
         limite = 60 if opcoes.get("pcap") else int(opcoes.get("segundos", 30)) + 60
-        proc = subprocess.run(self.comando(opcoes), capture_output=True, text=True, timeout=limite)
+        proc = progresso.rodar(self.comando(opcoes), timeout=limite)
         if proc.returncode != 0:
             raise RuntimeError(f"tshark falhou ({proc.returncode}): {proc.stderr.strip()[:300]}")
         saida = proc.stdout.strip()

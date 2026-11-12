@@ -11,10 +11,12 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 
 from .base import Adapter, Contexto, achar_executavel
+from ..core import progresso
 from ..schema import Finding, Severidade, Lente, Fix, FixTipo
 
 _SEV = {
@@ -65,7 +67,7 @@ class BanditAdapter(Adapter):
         with tempfile.TemporaryDirectory() as tmp:
             rel = os.path.join(tmp, "bandit.json")
             cmd = [achar_executavel("bandit"), "-r", ctx.projeto, "-f", "json", "-o", rel, "-q"]
-            proc = subprocess.run(cmd, capture_output=True, text=True)
+            proc = progresso.rodar(cmd)
             # bandit: 0 = limpo, 1 = achou problema.
             if proc.returncode not in (0, 1):
                 raise RuntimeError(

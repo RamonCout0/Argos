@@ -28,6 +28,10 @@ CWE_LGPD = {
     "CWE-200",  # exposicao de informacao sensivel
     "CWE-327",  # criptografia fraca (ex.: md5 pra senha)
     "CWE-916",  # hash de senha fraco
+    "CWE-538",  # arquivo sensivel publicado (.env, banco, backup)
+    "CWE-527",  # pasta .git publicada
+    "CWE-548",  # listagem de pasta (uploads de usuarios)
+    "CWE-862",  # endpoint sem checar permissao (le dado dos outros)
 }
 
 # Abuso automatizado / bots.
@@ -37,6 +41,7 @@ CWE_BOT = {
     "CWE-799",  # frequencia de interacao sem controle
     "CWE-400",  # consumo de recurso descontrolado
     "CWE-804",  # captcha adivinhavel
+    "ARGOS-ADMIN-PADRAO",  # /admin/ e o alvo numero 1 de bots de senha
 }
 
 _ORDEM = [Lente.CRITICO, Lente.LGPD, Lente.BOT]
