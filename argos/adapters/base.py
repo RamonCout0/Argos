@@ -11,11 +11,29 @@ núcleo não muda.
 """
 from __future__ import annotations
 
+import os
+import shutil
+import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 from ..schema import Finding
+
+
+def achar_executavel(nome: str) -> Optional[str]:
+    """Caminho de uma ferramenta: primeiro no PATH, depois ao lado do Python atual.
+
+    Ferramentas instaladas via pip (pip-audit, semgrep, bandit) ficam na pasta
+    de scripts do venv. Se o Argos roda com o Python do venv mas sem o venv
+    ativado, essa pasta não está no PATH e o `shutil.which` sozinho não acha.
+    """
+    achado = shutil.which(nome)
+    if achado:
+        return achado
+    pasta = Path(sys.executable).parent  # venv/bin (Linux) ou venv\Scripts (Windows)
+    return shutil.which(nome, path=os.fspath(pasta))
 
 
 @dataclass

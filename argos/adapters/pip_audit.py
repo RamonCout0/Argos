@@ -17,10 +17,9 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 
-from .base import Adapter, Contexto
+from .base import Adapter, Contexto, achar_executavel
 from ..schema import Finding, Severidade, Lente, Fix, FixTipo
 
 
@@ -71,7 +70,7 @@ class PipAuditAdapter(Adapter):
     nome = "pip-audit"
 
     def disponivel(self) -> bool:
-        return shutil.which("pip-audit") is not None
+        return achar_executavel("pip-audit") is not None
 
     def como_instalar(self) -> str:
         return "Instale: pip install pip-audit  (precisa de internet pra consultar a base de CVEs)."
@@ -87,7 +86,7 @@ class PipAuditAdapter(Adapter):
         if not req:
             return []  # sem requirements.txt, nada a auditar nesta fase
 
-        cmd = ["pip-audit", "-r", req, "-f", "json", "--progress-spinner", "off"]
+        cmd = [achar_executavel("pip-audit"), "-r", req, "-f", "json", "--progress-spinner", "off"]
         proc = subprocess.run(cmd, capture_output=True, text=True)
         # pip-audit: 0 = limpo, 1 = achou vulnerabilidade. O JSON sai no stdout.
         if proc.returncode not in (0, 1):

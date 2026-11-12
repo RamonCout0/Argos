@@ -11,11 +11,10 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import tempfile
 
-from .base import Adapter, Contexto
+from .base import Adapter, Contexto, achar_executavel
 from ..schema import Finding, Severidade, Lente, Fix, FixTipo
 
 _SEV = {
@@ -55,7 +54,7 @@ class BanditAdapter(Adapter):
     nome = "bandit"
 
     def disponivel(self) -> bool:
-        return shutil.which("bandit") is not None
+        return achar_executavel("bandit") is not None
 
     def como_instalar(self) -> str:
         return "Instale: pip install bandit"
@@ -65,7 +64,7 @@ class BanditAdapter(Adapter):
             raise FileNotFoundError("bandit nao encontrado. " + self.como_instalar())
         with tempfile.TemporaryDirectory() as tmp:
             rel = os.path.join(tmp, "bandit.json")
-            cmd = ["bandit", "-r", ctx.projeto, "-f", "json", "-o", rel, "-q"]
+            cmd = [achar_executavel("bandit"), "-r", ctx.projeto, "-f", "json", "-o", rel, "-q"]
             proc = subprocess.run(cmd, capture_output=True, text=True)
             # bandit: 0 = limpo, 1 = achou problema.
             if proc.returncode not in (0, 1):

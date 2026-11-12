@@ -19,7 +19,7 @@ import re
 import shutil
 import subprocess
 
-from .base import Adapter, Contexto
+from .base import Adapter, Contexto, achar_executavel
 from ..schema import Finding, Severidade, Lente, Fix, FixTipo
 
 _SEV = {
@@ -84,13 +84,15 @@ class SemgrepAdapter(Adapter):
 
     def __init__(self) -> None:
         self._modo: str | None = None  # "native" | "wsl" | None
+        self._exe: str | None = None   # caminho do semgrep nativo
         self._detectado = False
 
     def _detectar(self) -> None:
         if self._detectado:
             return
         self._detectado = True
-        if shutil.which("semgrep"):
+        self._exe = achar_executavel("semgrep")
+        if self._exe:
             self._modo = "native"
             return
         if os.name == "nt" and shutil.which("wsl"):
@@ -108,6 +110,8 @@ class SemgrepAdapter(Adapter):
         return self._modo is not None
 
     def como_instalar(self) -> str:
+        if os.name != "nt":
+            return "Instale: pip install semgrep"
         return (
             "Instale o semgrep no WSL: abra o 'wsl' e rode 'pip install semgrep' "
             "(ou rode o Argos inteiro dentro do WSL)."
@@ -120,13 +124,14 @@ class SemgrepAdapter(Adapter):
                 "semgrep nao encontrado (nem nativo, nem via WSL). " + self.como_instalar()
             )
 
-        base = ["semgrep", "scan", "--config", "auto", "--json", "--metrics=off", "--quiet"]
+        # "auto" exige metrics ligado; com --metrics=off usamos o ruleset padrao do registry.
+        base = ["semgrep", "scan", "--config", "p/default", "--json", "--metrics=off", "--quiet"]
         if self._modo == "wsl":
             alvo = _win_para_wsl(os.path.abspath(ctx.projeto))
             cmd = ["wsl"] + base + [alvo]
             traduzir = _wsl_para_win
         else:
-            cmd = base + [ctx.projeto]
+            cmd = [self._exe] + base[1:] + [ctx.projeto]
             traduzir = None
 
         proc = subprocess.run(cmd, capture_output=True, text=True)
