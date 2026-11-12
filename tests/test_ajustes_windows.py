@@ -67,3 +67,17 @@ def test_gitleaks_titulo_em_portugues_e_caminho_curto(tmp_path):
     assert "abcdef" not in f.evidencia
     outro = parse_relatorio([{"File": "x.py", "RuleID": "algo-novo", "Secret": "s"}])[0]
     assert outro.titulo == "Segredo escrito no código (algo novo)"
+
+
+def test_gui_cai_na_classica_sem_gtk_no_linux(monkeypatch, capsys):
+    import importlib.util
+    import types
+    import cli
+    monkeypatch.setattr(cli.sys, "platform", "linux")
+    monkeypatch.setattr(importlib.util, "find_spec", lambda n: None)
+    monkeypatch.setitem(sys.modules, "webview", types.ModuleType("webview"))
+    chamado = {}
+    monkeypatch.setattr(cli, "_gui_classica", lambda demo: chamado.setdefault("ok", 0))
+    args = types.SimpleNamespace(demo=False, classico=False)
+    assert cli.cmd_gui(args) == 0 and "ok" in chamado
+    assert "python3-gi" in capsys.readouterr().out

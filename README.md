@@ -41,6 +41,16 @@ python cli.py gui --demo     # abre com dados de exemplo, sem rodar scanner
 python cli.py gui --classico # a interface antiga, em Tkinter puro
 ```
 
+**No Linux, com venv:** o `gi` (GTK) vem do sistema e não instala bem pelo pip, então o venv precisa enxergar os pacotes do sistema:
+
+```bash
+sudo apt install python3-gi gir1.2-webkit2-4.1 python3-tk
+rm -rf venv && python3 -m venv --system-site-packages venv
+source venv/bin/activate && pip install -r requirements.txt
+```
+
+Use o `python3` do sistema pra criar o venv (o `python3-gi` do apt só serve pra ele). Sem GTK, o `gui` avisa e abre a interface clássica.
+
 Janela nativa (pywebview) com a tela em HTML, CSS e SVG — leve o bastante pra notebook de 4 GB, porque usa o navegador que já vem no sistema (WebView2 no Windows, WebKit no Linux). Nada sai pra internet: a tela e o Python conversam por dentro da janela.
 
 **O olho do Argos** é 100% vetorial e muda conforme o que está acontecendo — e a cor de destaque da interface inteira acompanha:

@@ -373,9 +373,27 @@ def cmd_gui(args) -> int:
         print("  (no Linux tambem: sudo apt install python3-gi gir1.2-webkit2-4.1)")
         print("Abrindo a interface classica enquanto isso...\n")
         return _gui_classica(demo)
+    if not _motor_web_ok():
+        print("A interface nova nao achou um motor grafico pro pywebview.")
+        if sys.platform.startswith("linux"):
+            print("  No Linux (Debian/Ubuntu/Mint):")
+            print("    sudo apt install python3-gi gir1.2-webkit2-4.1")
+            print("  e o venv precisa enxergar esse pacote do sistema:")
+            print("    python3 -m venv --system-site-packages venv")
+            print("  (detalhes no README, secao 'Interface grafica').")
+        print("Abrindo a interface classica enquanto isso...\n")
+        return _gui_classica(demo)
     from argos.ui.janela import main as ui_main
     ui_main(demo)
     return 0
+
+
+def _motor_web_ok() -> bool:
+    """O pywebview importa, mas no Linux ainda precisa do GTK (gi) ou do Qt (qtpy)."""
+    if not sys.platform.startswith("linux"):
+        return True
+    import importlib.util
+    return any(importlib.util.find_spec(m) is not None for m in ("gi", "qtpy"))
 
 
 def cmd_aceitar(args) -> int:
