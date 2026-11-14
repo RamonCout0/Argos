@@ -310,6 +310,26 @@ class ApiArgos:
         except OSError as e:
             return {"erro": f"Não consegui ler: {e}"}
 
+    def texto_ia(self, nome: str = "auditoria") -> dict:
+        """O relatório em Markdown pra colar no Claude (a tela copia pra área de transferência)."""
+        from ..report.prompt_ia import render_prompt
+        c = self._conj.get(nome)
+        if not c:
+            return {"erro": "Rode uma auditoria antes de exportar."}
+        return {"texto": render_prompt(c["findings"], c["meta"])}
+
+    def exportar_ia(self, nome: str = "auditoria") -> dict:
+        """Salva o mesmo Markdown num arquivo .md."""
+        r = self.texto_ia(nome)
+        if "erro" in r:
+            return r
+        destino = self._dialogo("salvar", save_filename="argos_pra_ia.md")
+        if not destino:
+            return {}
+        with open(destino, "w", encoding="utf-8") as fp:
+            fp.write(r["texto"])
+        return {"ok": destino}
+
     def exportar_html(self, nome: str = "auditoria") -> dict:
         c = self._conj.get(nome)
         if not c:

@@ -51,7 +51,11 @@
     <section class="view ativa" id="view-auditoria">
       <header class="topo-view">
         <div><h2>Auditoria</h2><p>Código, portas, tráfego e web do teu projeto, num veredito só.</p></div>
-        <button class="btn" id="btn-exportar"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Exportar HTML</button>
+        <div class="linha-botoes">
+          <button class="btn btn-cor" id="btn-copiar-ia" title="Copia um relatório em Markdown pronto pra colar no Claude e pedir as correções"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Copiar pra IA</button>
+          <button class="btn" id="btn-salvar-ia" title="Salva o relatório pra IA num arquivo .md">Salvar .md</button>
+          <button class="btn" id="btn-exportar"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Exportar HTML</button>
+        </div>
       </header>
 
       <div class="grade-aud">

@@ -479,6 +479,36 @@
     if (r && r.erro) { toast(r.erro, true); b.disabled = false; b.textContent = "Cancelar"; }
   }
 
+  // ------------------------------------------------------------ relatório pra IA
+
+  async function copiarTexto(texto) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(texto); return true; }
+    } catch (e) { /* cai no plano B */ }
+    const area = el("textarea");
+    area.value = texto;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed"; area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    area.remove();
+    return ok;
+  }
+
+  async function copiarPraIA() {
+    const r = await api("texto_ia", "auditoria");
+    if (!r || r.erro) { toast(r ? r.erro : "Não consegui montar o relatório.", true); return; }
+    if (await copiarTexto(r.texto)) {
+      toast("Copiado! Cole no Claude e peça: \"corrija essas brechas\".");
+    } else {
+      toast("Não deu pra copiar aqui; vou salvar num arquivo .md.");
+      const s = await api("exportar_ia", "auditoria");
+      if (s && s.ok) toast("Relatório pra IA salvo: " + s.ok);
+    }
+  }
+
   function ocupar(nome) {
     if (nome && app.ocupado !== nome) consoleAbrir(nome);
     app.ocupado = nome;
@@ -594,6 +624,11 @@
     $("#console-recolher").addEventListener("click", consoleRecolher);
     $("#console-fechar").addEventListener("click", consoleFechar);
     $("#btn-ia").addEventListener("click", testarIA);
+    $("#btn-copiar-ia").addEventListener("click", copiarPraIA);
+    $("#btn-salvar-ia").addEventListener("click", async () => {
+      const r = await api("exportar_ia", "auditoria");
+      if (r && r.erro) toast(r.erro, true); else if (r && r.ok) toast("Relatório pra IA salvo: " + r.ok);
+    });
     $("#btn-exportar").addEventListener("click", async () => {
       const r = await api("exportar_html", "auditoria");
       if (r && r.erro) toast(r.erro, true); else if (r && r.ok) toast("Relatório salvo: " + r.ok);
@@ -699,6 +734,8 @@
       escolher: () => "",
       abrir_texto: () => ({ texto: "" }),
       exportar_html: () => ({ erro: "Na prévia do navegador não dá pra exportar." }),
+      texto_ia: () => (app.conj.auditoria ? { texto: "# Argos: brechas pra corrigir\n\n(prévia)" } : { erro: "Rode uma auditoria antes de exportar." }),
+      exportar_ia: () => ({ erro: "Na prévia do navegador não dá pra salvar arquivo." }),
     };
   })();
 

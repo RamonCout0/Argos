@@ -15,6 +15,7 @@ Trilhas separadas:
 
 Opcoes de relatorio (em scan/nativo/trafego/web/auditar):
   --lente critico|lgpd|bot   --ia   --html arq.html   --saida-json arq.json
+  --prompt-ia arq.md         (relatorio pronto pra colar no Claude e pedir as correcoes)
   --falhar-em medio|baixo    (selo mais rigoroso; nunca mais frouxo que 'alto')
 
 Riscos aceitos (falso positivo), com motivo e prazo:
@@ -190,6 +191,11 @@ def _exportar(findings, meta, args, limite) -> None:
         with open(args.saida_json, "w", encoding="utf-8") as fp:
             json.dump(dados, fp, ensure_ascii=False, indent=2)
         print(f"relatorio JSON: {os.path.abspath(args.saida_json)}")
+    if getattr(args, "prompt_ia", None):
+        from argos.report.prompt_ia import render_prompt
+        with open(args.prompt_ia, "w", encoding="utf-8") as fp:
+            fp.write(render_prompt(findings, meta, limite))
+        print(f"relatorio pra IA: {os.path.abspath(args.prompt_ia)}  (cole no Claude e peca as correcoes)")
 
 
 def _finalizar(res: Resultado, args, alvo: str = "") -> int:
@@ -487,6 +493,8 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--ia-max", type=int, default=10, help="max. de achados pra IA (padrao 10)")
         sp.add_argument("--html", metavar="ARQ", help="salva o relatorio HTML")
         sp.add_argument("--saida-json", metavar="ARQ", help="salva o relatorio em JSON (pra CI)")
+        sp.add_argument("--prompt-ia", metavar="ARQ",
+                        help="salva um .md pronto pra colar no Claude e pedir as correcoes")
         sp.add_argument("--falhar-em", choices=["alto", "medio", "baixo"], default="alto",
                         help="nivel que bloqueia o selo (so mais rigoroso que o padrao 'alto')")
 

@@ -135,6 +135,20 @@ Pra ver funcionando: `python exemplos/web_inseguro.py` sobe um app errado de pro
 
 ---
 
+## Mandar as brechas pra uma IA corrigir
+
+Na interface, **Copiar pra IA** copia um relatório em Markdown pronto pra colar no Claude (ou **Salvar .md**). Pela linha de comando:
+
+```bash
+python cli.py auditar . --url http://127.0.0.1:8000 --prompt-ia pra_ia.md
+```
+
+O arquivo traz instruções de como corrigir com segurança (ordem de gravidade, mudança mínima, nada de escrever segredo, permissão no backend) e cada brecha com arquivo:linha, evidência mascarada, por que importa, correção sugerida e como confirmar. No fim, separa o que só você resolve: trocar a chave que vazou, decidir quais endpoints são públicos.
+
+Os achados vão marcados como **dados, não instruções**: um comentário malicioso no código escaneado não vira ordem pra IA. Depois de aplicar as correções, rode o Argos de novo: uma brecha só conta como corrigida quando o re-scan confirma.
+
+---
+
 ## Rodar fora do localhost: verificação de dono
 
 Por padrão o Argos só aceita alvos locais/privados. Pra checar **o teu próprio site em produção**, o site precisa provar que é teu — não basta uma variável no teu PC, a prova vem do servidor:
