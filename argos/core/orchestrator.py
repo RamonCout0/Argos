@@ -33,6 +33,9 @@ from ..adapters.tshark import TsharkAdapter
 from ..adapters.prompt_injection import PromptInjectionAdapter
 from ..adapters.web import WebAdapter
 from ..adapters.config_projeto import ConfigAdapter
+from ..adapters.dependencias import OsvAdapter, NpmAuditAdapter
+from ..adapters.django_deploy import DjangoDeployAdapter
+from ..adapters.trivy import TrivyAdapter
 # from ..adapters.bandit import BanditAdapter  # extra: SAST so-Python nativo no Windows
 
 # Trilha 1 — codigo
@@ -41,6 +44,10 @@ ADAPTERS: list[Adapter] = [
     PipAuditAdapter(),   # CVE em dependencias Python
     SemgrepAdapter(),    # SAST poliglota (via WSL no Windows)
     ConfigAdapter(),     # .env, Django, DRF, Angular (v2.1)
+    OsvAdapter(),        # dependencias de todas as linguagens: npm, pip, poetry... (v2.2)
+    NpmAuditAdapter(),   # reserva pro package-lock quando o OSV nao esta instalado (v2.2)
+    DjangoDeployAdapter(),  # manage.py check --deploy, com o venv do projeto (v2.2)
+    TrivyAdapter(),      # Dockerfile / docker-compose (v2.2)
     # BanditAdapter(),   # descomente p/ uma 2a passada so-Python (sobrepoe o semgrep)
 ]
 

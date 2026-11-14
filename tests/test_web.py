@@ -63,6 +63,7 @@ class SpaSegura(BaseHTTPRequestHandler):
         self.send_header("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'")
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "same-origin")
         self.send_header("Set-Cookie", "sessionid=x; Path=/; HttpOnly; SameSite=Lax")
         self.end_headers()
         self.wfile.write(corpo)

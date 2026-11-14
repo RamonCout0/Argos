@@ -36,6 +36,25 @@ def achar_executavel(nome: str) -> Optional[str]:
     return shutil.which(nome, path=os.fspath(pasta))
 
 
+def achar_programa(nome: str) -> Optional[str]:
+    """Como achar_executavel, mas no Windows também procura onde winget, choco e scoop
+    instalam (o PATH novo só vale em terminais abertos DEPOIS da instalação)."""
+    achado = achar_executavel(nome)
+    if achado or os.name != "nt":
+        return achado
+    import glob
+    exe = nome + ".exe"
+    local = os.environ.get("LOCALAPPDATA", "")
+    casa = os.path.expanduser("~")
+    candidatos = [os.path.join(local, "Microsoft", "WinGet", "Links", exe),
+                  os.path.join(os.environ.get("ProgramData", "C:/ProgramData"), "chocolatey", "bin", exe),
+                  os.path.join(casa, "scoop", "shims", exe),
+                  os.path.join(casa, "go", "bin", exe)]
+    candidatos += glob.glob(os.path.join(local, "Microsoft", "WinGet", "Packages", f"*{nome[1:]}*", "**", exe),
+                            recursive=True)
+    return next((c for c in candidatos if c and os.path.isfile(c)), None)
+
+
 def caminho_relativo(arquivo: str, raiz: Optional[str]) -> str:
     """Caminho curto, relativo à pasta auditada (com '/').
     (C:/Users/.../tevejo/src/x.py -> src/x.py; fora da pasta, fica como está.)"""

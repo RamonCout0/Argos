@@ -168,3 +168,47 @@ GENERICO = (
 
 def explicacao_base(categoria: str) -> tuple[str, str]:
     return TEMPLATES.get(categoria.upper().strip(), GENERICO)
+
+
+# v2.2: Django check --deploy, dependências e Docker
+TEMPLATES.update({
+    "CWE-330": (
+        "Uma SECRET_KEY fraca ou conhecida deixa forjar sessões, tokens de senha e cookies assinados.",
+        "Gerar uma chave nova e longa (get_random_secret_key()) e ler de variável de ambiente.",
+    ),
+    "CWE-352": (
+        "Sem proteção CSRF, outro site consegue fazer ações em nome de quem está logado no teu.",
+        "Manter o CsrfViewMiddleware ligado e o token CSRF nos formulários e chamadas do front.",
+    ),
+    "CWE-295": (
+        "Certificado inválido: o navegador avisa 'não seguro' e fica fácil alguém se passar pelo teu site.",
+        "Usar um certificado válido pro domínio (Let's Encrypt; no Railway já vem pronto).",
+    ),
+    "CWE-298": (
+        "Quando o certificado vence, o site para de abrir com segurança pra todo mundo.",
+        "Renovar o certificado e conferir a renovação automática.",
+    ),
+    "CWE-200": (
+        "O navegador manda o endereço completo da página pra outros sites (pode levar IDs e tokens da URL).",
+        "Definir Referrer-Policy (Django: SECURE_REFERRER_POLICY = 'same-origin').",
+    ),
+})
+
+DEPENDENCIA = (
+    "Essa versão da biblioteca tem uma falha pública e conhecida: quem procura alvos já sabe como explorar.",
+    "Atualizar pra versão corrigida indicada e rodar os testes do projeto.",
+)
+DOCKER = (
+    "Configuração do container que facilita a vida de quem invade (ex.: rodar como root, imagem sem versão fixa).",
+    "Seguir a correção indicada pelo Trivy no Dockerfile/docker-compose.",
+)
+_explicacao_base_antiga = explicacao_base
+
+
+def explicacao_base(categoria: str) -> tuple[str, str]:  # noqa: F811 - amplia a versão acima
+    cat = (categoria or "").upper().strip()
+    if cat.startswith(("CVE-", "GHSA-", "PYSEC-", "OSV-", "NPM-AUDIT", "RUSTSEC-", "GO-")):
+        return DEPENDENCIA
+    if cat.startswith("TRIVY-"):
+        return DOCKER
+    return _explicacao_base_antiga(categoria)

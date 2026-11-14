@@ -233,6 +233,8 @@ class Varredura:
                 self._add("Django Debug Toolbar ativa", ALTO, "CWE-489", "/",
                           "a página inicial carrega a barra de debug (SQL, settings, headers)",
                           "Desligar o debug toolbar fora do teu PC (INTERNAL_IPS só com 127.0.0.1 e DEBUG=False).")
+        if self.https:
+            self._tls()
         if self.local:
             self._trace()
         if not self.https and not self.local:
@@ -275,6 +277,10 @@ class Varredura:
             self._add("Sem HSTS no HTTPS", MEDIO, "CWE-319", " · cabeçalho HSTS",
                       "o navegador aceita voltar pro HTTP (ataque de rebaixamento)",
                       "Strict-Transport-Security (Django: SECURE_HSTS_SECONDS).")
+        if not home.h("referrer-policy"):
+            self._add("Sem Referrer-Policy", BAIXO, "CWE-200", " · cabeçalho Referrer-Policy",
+                      "o navegador pode mandar o endereço completo da página pra outros sites",
+                      "Referrer-Policy: same-origin (Django: SECURE_REFERRER_POLICY, já vem por padrão).")
         for nome in ("server", "x-powered-by"):
             v = home.h(nome)
             if re.search(r"\d+\.\d+", v):
@@ -379,6 +385,58 @@ class Varredura:
                     self._add("Source map publicado: o código-fonte original fica legível", MEDIO, "CWE-540",
                               urlsplit(alvo).path, "o .map reconstrói o código do front com nomes e comentários",
                               "Não publicar source maps em produção (Angular: \"sourceMap\": false na configuração production).")
+
+    def _tls(self):
+        """Certificado e protocolo do HTTPS (sem HTTP: só o aperto de mão TLS)."""
+        import socket
+        import ssl
+        partes = urlsplit(self.base)
+        host, porta = partes.hostname, partes.port or 443
+        progresso.checar()
+        progresso.avisar(f"TLS {host}:{porta} → conferindo certificado", "req")
+        try:
+            ctx = ssl.create_default_context()
+            with socket.create_connection((host, porta), timeout=8) as bruto, \
+                    ctx.wrap_socket(bruto, server_hostname=host) as tls:
+                cert, versao = tls.getpeercert(), tls.version()
+        except ssl.SSLCertVerificationError as e:
+            motivo = getattr(e, "verify_message", "") or str(e)
+            sev = INFO if self.local else ALTO
+            self._add("Certificado HTTPS inválido", sev, "CWE-295", " · certificado",
+                      f"o navegador vai avisar 'não seguro': {motivo[:120]}",
+                      "Usar um certificado válido (Let's Encrypt; no Railway já vem pronto) "
+                      "e conferir se ele cobre esse domínio.")
+            return
+        except (OSError, ssl.SSLError) as e:
+            progresso.avisar(f"TLS: não consegui conectar ({str(e)[:80]})", "pulado")
+            return
+        try:
+            dias = int((ssl.cert_time_to_seconds(cert["notAfter"]) - time.time()) // 86400)
+        except (KeyError, ValueError):
+            dias = None
+        if dias is not None and dias <= 14:
+            self._add(f"Certificado HTTPS vence em {max(dias, 0)} dia(s)", MEDIO, "CWE-298", " · certificado",
+                      f"válido até {cert.get('notAfter')}",
+                      "Renovar o certificado (ou conferir se a renovação automática está funcionando).")
+        if versao in ("TLSv1", "TLSv1.1"):
+            self._add(f"HTTPS negociou um protocolo antigo ({versao})", MEDIO, "CWE-327", " · protocolo TLS",
+                      "o servidor escolheu TLS antigo, com falhas conhecidas",
+                      "Aceitar só TLS 1.2 e 1.3 no servidor/proxy.")
+            return
+        try:  # o servidor ainda ACEITA TLS 1.0/1.1 se o cliente pedir?
+            velho = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            velho.check_hostname, velho.verify_mode = False, ssl.CERT_NONE
+            velho.minimum_version, velho.maximum_version = ssl.TLSVersion.TLSv1, ssl.TLSVersion.TLSv1_1
+            velho.set_ciphers("DEFAULT:@SECLEVEL=0")
+            with socket.create_connection((host, porta), timeout=8) as bruto, \
+                    velho.wrap_socket(bruto, server_hostname=host) as tls:
+                aceita = tls.version()
+        except (OSError, ssl.SSLError, ValueError):
+            aceita = None
+        if aceita:
+            self._add(f"Servidor ainda aceita {aceita}", MEDIO, "CWE-327", " · protocolo TLS",
+                      f"um cliente antigo conseguiu conectar com {aceita}",
+                      "Desligar TLS 1.0 e 1.1 no servidor/proxy (deixar só 1.2 e 1.3).")
 
     def _trace(self):
         r = self.c.pedir("/", metodo="TRACE")

@@ -15,7 +15,7 @@ python cli.py ia --sistema exemplos/ia/prompt_fraco.txt   # testa uma IA no teu 
 python -m pytest -q                     # roda a suite de testes
 ```
 
-Os scanners externos (gitleaks, pip-audit, semgrep, nmap, tshark, Ollama) são todos opcionais: o que não estiver instalado é pulado com aviso e dica de instalação. A lista está em `requirements.txt`.
+Os scanners externos (gitleaks, pip-audit, semgrep, OSV-Scanner, Trivy, nmap, tshark, Ollama) são todos opcionais: o que não estiver instalado é pulado com aviso e dica de instalação. A lista está em `requirements.txt`.
 
 Argos é uma ferramenta open-source de segurança para desenvolvedores (especialmente quem toca projeto sozinho). Ele orquestra scanners de ataque e defesa já consagrados, junta tudo num relatório único e legível, e te dá um checklist do que mudar antes do deploy.
 
@@ -135,6 +135,27 @@ Pra ver funcionando: `python exemplos/web_inseguro.py` sobe um app errado de pro
 
 ---
 
+## O que cada scanner cobre (v2.2)
+
+| Brecha | Quem acha | Instalar no Windows |
+|---|---|---|
+| Senha/chave escrita no código **e no histórico do git** | gitleaks | `winget install gitleaks` |
+| Biblioteca com falha conhecida (CVE): npm, pip, poetry, go, cargo… | OSV-Scanner | `winget install Google.OSVScanner` |
+| Biblioteca do Angular, se não tiver OSV | npm audit | já vem com o Node.js |
+| Biblioteca Python com CVE | pip-audit | `python -m pip install pip-audit` |
+| SQL injection, XSS, `eval`, padrões perigosos no código | Semgrep | no WSL (Ubuntu): `sudo python3 -m venv /opt/semgrep` e `sudo /opt/semgrep/bin/pip install semgrep` |
+| Configuração de produção do Django (DEBUG, HSTS, cookies, SECRET_KEY…) | `manage.py check --deploy` | nada: usa o venv do teu projeto |
+| `.env` exposto, settings do Django/DRF, Angular | checagem de configuração do Argos | nada |
+| Dockerfile / docker-compose inseguro (root, `:latest`, segredo no ENV) | Trivy | `winget install AquaSecurity.Trivy` |
+| Porta aberta pra rede | psutil + nmap | `winget install Insecure.Nmap` |
+| Dado pessoal em HTTP sem TLS | tshark | vem com o Wireshark |
+| O que o navegador/Burp vê: arquivos expostos, CORS, cookies, cabeçalhos, **certificado e TLS** | trilha web | nada |
+| IA obedecendo prompt injection | teste de IA | Ollama |
+
+**`check --deploy` em dev x produção:** com o settings de desenvolvimento, quase todo aviso aparece (DEBUG=True é normal no teu PC). Por isso, nesse modo, os avisos ficam no máximo MÉDIO, com "(em produção)" no título, e não travam o selo. Pra checar o settings de produção de verdade, coloque `ARGOS_DJANGO_SETTINGS=core.settings.prod` (o teu módulo) no `.env` do Argos. Esse scanner executa o `settings.py` do teu projeto, por isso só roda em pasta local.
+
+---
+
 ## Mandar as brechas pra uma IA corrigir
 
 Na interface, **Copiar pra IA** copia um relatório em Markdown pronto pra colar no Claude (ou **Salvar .md**). Pela linha de comando:
@@ -214,6 +235,9 @@ argos/
     base.py            # o contrato: todo scanner implementa Adapter
     gitleaks.py        # segredos vazados
     pip_audit.py       # CVE em dependencias Python
+    dependencias.py    # v2.2: OSV-Scanner (todas as linguagens) + npm audit de reserva
+    django_deploy.py   # v2.2: manage.py check --deploy com o venv do projeto
+    trivy.py           # v2.2: Dockerfile / docker-compose
     semgrep.py         # SAST poliglota (ponte WSL no Windows)
     bandit.py          # SAST so-Python (extra, nativo no Windows)
     prompt_injection.py # v2.0: teste da tua IA (vazamento, sobrescrita, injecao indireta)
@@ -262,6 +286,7 @@ tests/                 # testes do nucleo e dos parsers
 - **Fase 6 — veredito e relatório (OK):** `auditar` roda as trilhas pedidas e junta tudo num selo só; relatório HTML offline (`--html`) e JSON pra CI (`--saida-json`); `--falhar-em medio|baixo` deixa o selo mais rigoroso (nunca mais frouxo); riscos aceitos com motivo e prazo de até 90 dias em `argos-aceitos.json`.
 - **v1.1 — interface gráfica** (Tkinter, hoje `gui --classico`).
 - **v2.0 — teste de IA e interface nova (OK):** trilha `ia` (prompt injection: vazamento, sobrescrita, injeção indireta) e interface pywebview com olho vetorial por estado.
+- **v2.2 — mais olhos (OK):** OSV-Scanner (dependências de todas as linguagens, com npm audit de reserva), `manage.py check --deploy` com o venv do projeto, gitleaks também no histórico do git, Trivy pra Dockerfile/docker-compose, certificado e versão do TLS na trilha web, e o relatório pra IA (`--prompt-ia` / Copiar pra IA).
 - **v2.1 — trilha web e configuração (OK):** `web <urls>` e `auditar --url` (o que Burp e scanners de diretório revelariam, só passivo) + checagem de configuração do Django/DRF/Angular/.env dentro do `scan`. Na interface: log ao vivo de cada passo (cada scanner, cada requisição, cada sondagem da IA), botão de cancelar que encerra até os programas externos, e um buraco negro que abre atrás do olho enquanto ele vasculha (canvas, respeita "reduzir movimento").
 - **Fase 7 — ideia: DAST com dono verificado.** Scanner web (ex.: OWASP ZAP) só em alvo local ou com verificação de dono. Em produção, apenas modo passivo (baseline: cabeçalhos, cookies, HTTPS); ataque ativo só em localhost/staging. Conferir a política de uso aceitável da hospedagem antes.
 
