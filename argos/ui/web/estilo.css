@@ -383,3 +383,6 @@ body.com-console.console-baixo .toasts { bottom: 80px; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+.chave-ataque span { color: #ff8fa3; }
+.chave-ataque input:checked + .trilho { background: #ff4d6d; border-color: #ff4d6d; }

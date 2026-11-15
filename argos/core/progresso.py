@@ -108,11 +108,13 @@ def rodar(cmd: list[str], timeout: Optional[float] = None, **kw) -> subprocess.C
     if s is None:
         return subprocess.run(cmd, capture_output=True, timeout=timeout, **kw)
     checar()
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kw)
+    entrada = kw.pop("input", None)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         stdin=subprocess.PIPE if entrada is not None else None, **kw)
     s._registrar(p)
     try:
         try:
-            out, err = p.communicate(timeout=timeout)
+            out, err = p.communicate(input=entrada, timeout=timeout)
         except subprocess.TimeoutExpired:
             p.kill()
             p.communicate()

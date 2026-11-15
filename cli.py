@@ -10,6 +10,8 @@ Trilhas separadas:
   python cli.py nativo --listar              -> tudo que esta escutando na maquina
   python cli.py trafego [--segundos 30]      -> dado sensivel em HTTP sem TLS (ao vivo)
   python cli.py trafego --pcap arquivo.pcap  -> analisa uma captura do Wireshark
+  python cli.py atacar <pasta>               -> MODO ATAQUE (Fase 7): IDOR, CSRF, XSS, injecao, forca
+                                                bruta e carga ate cair, no app local; so repo seu
   python cli.py web http://127.0.0.1:8000    -> o app no navegador: cabecalhos, CORS, cookies,
                                                 arquivos/pastas expostos, segredos no JS (v2.1)
 
@@ -53,7 +55,7 @@ from argos.guard.verificacao import (
 )
 from argos.config import carregar_segredo
 from argos.core.orchestrator import (
-    escanear_projeto, escanear_nativo, analisar_trafego, analisar_web, auditar, Resultado,
+    escanear_projeto, escanear_nativo, analisar_trafego, analisar_web, atacar_projeto, auditar, Resultado,
 )
 from argos.core import aceitos as mod_aceitos
 from argos.adapters.portas import listar_sockets
@@ -313,6 +315,15 @@ def cmd_auditar(args) -> int:
     return _finalizar(auditar(args.pasta, nativo, trafego, web), args, alvo=alvo)
 
 
+def cmd_atacar(args) -> int:
+    if not args.json:
+        print("MODO ATAQUE: testes reais (IDOR, CSRF, XSS, injeção, força bruta, carga até cair).")
+        print("Travas: só repositório em que você é ADMIN no GitHub; o Argos sobe o app sozinho em")
+        print("127.0.0.1 com banco novo, usuários de mentira e sem internet de saída.\n")
+    opcoes = {"carga_max": args.carga_max, "sem_carga": args.sem_carga}
+    return _finalizar(atacar_projeto(args.pasta, opcoes), args, alvo=f"{args.pasta} (laboratório local)")
+
+
 def cmd_web(args) -> int:
     if not args.json:
         print(f"Varredura web passiva em: {', '.join(args.urls)}")
@@ -513,6 +524,13 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--url", action="append", help="trilha web: URL do app rodando (pode repetir)")
     comuns(a)
     a.set_defaults(func=cmd_auditar)
+
+    at = sub.add_parser("atacar", help="modo ataque (Fase 7): testes reais no app local, so repo seu")
+    at.add_argument("pasta", help="raiz do projeto Django (com manage.py e .git)")
+    at.add_argument("--carga-max", type=int, default=512, help="maximo de acessos simultaneos no teste de carga")
+    at.add_argument("--sem-carga", action="store_true", help="pula o teste de carga")
+    comuns(at)
+    at.set_defaults(func=cmd_atacar)
 
     w = sub.add_parser("web", help="trilha web: cabecalhos, CORS, cookies, arquivos e pastas expostos")
     w.add_argument("urls", nargs="+", help="ex.: http://127.0.0.1:8000 http://127.0.0.1:4200")

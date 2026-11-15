@@ -56,7 +56,7 @@ def test_validacoes_da_auditoria(api, tmp_path):
 
 def test_auditoria_completa_pela_ponte(api, tmp_path, monkeypatch):
     monkeypatch.setattr(mod_api.orq, "auditar",
-                        lambda p, n, t, w=None: Resultado(findings=[_f("A"), _f("B", Severidade.MEDIO)], rodaram=["x"]))
+                        lambda p, n, t, w=None, a=None: Resultado(findings=[_f("A"), _f("B", Severidade.MEDIO)], rodaram=["x"]))
     assert api.auditar({"pasta": str(tmp_path)}) == {"ok": True}
     s = _esperar(api)
     d = s["dados"]
@@ -75,7 +75,7 @@ def test_auditoria_completa_pela_ponte(api, tmp_path, monkeypatch):
 def test_auditoria_com_urls_vai_pra_trilha_web(api, monkeypatch):
     visto = {}
 
-    def falso(p, n, t, w=None):
+    def falso(p, n, t, w=None, a=None):
         visto["web"] = w
         return Resultado()
     monkeypatch.setattr(mod_api.orq, "auditar", falso)

@@ -1,0 +1,105 @@
+"""
+Argos — a trava do MODO ATAQUE (Fase 7).
+
+O modo ataque manda requisição de verdade, cria e apaga dados e martela o
+servidor até ele cair. Por isso ele só roda se as DUAS condições valerem, e
+não existe opção, variável ou flag pra pular nenhuma delas:
+
+  1. SÓ REPOSITÓRIO DO DONO: a pasta é um repositório git cujo `origin` está
+     no GitHub, e o GitHub confirma que quem está rodando é ADMINISTRADOR
+     dele (pelo `gh` logado ou por GITHUB_TOKEN). Clonou o projeto de outra
+     pessoa? Não ataca.
+  2. SÓ LOCALHOST, SÓ O PROCESSO DO ARGOS: o alvo não é uma URL escolhida
+     por alguém. O próprio Argos sobe o app da pasta em 127.0.0.1, numa porta
+     livre, e só ataca esse processo. Nem um túnel (ssh -L) apontando
+     localhost pra um site real passa, porque o Argos nunca se conecta a um
+     servidor que ele mesmo não iniciou.
+"""
+from __future__ import annotations
+
+import ipaddress
+import json
+import os
+import re
+import shutil
+import subprocess
+import urllib.request
+from urllib.parse import urlsplit
+
+
+class AtaqueRecusado(Exception):
+    """O modo ataque não roda aqui. A mensagem diz por quê e o que fazer."""
+
+
+_GITHUB = re.compile(r"github\.com[:/]+([^/\s]+)/([^/\s]+?)(?:\.git)?/?$", re.I)
+
+
+def repositorio_github(pasta: str) -> tuple[str, str]:
+    """(dono, repositório) do `origin` da pasta. Recusa se não for git/GitHub."""
+    if not os.path.isdir(os.path.join(pasta, ".git")):
+        raise AtaqueRecusado(f"{pasta} não é a raiz de um repositório git. O modo ataque só roda "
+                             "em projeto versionado no GitHub, do qual você é administrador.")
+    git = shutil.which("git")
+    if not git:
+        raise AtaqueRecusado("git não encontrado: preciso dele pra conferir de quem é o repositório.")
+    r = subprocess.run([git, "-C", pasta, "remote", "get-url", "origin"], capture_output=True, text=True)
+    url = (r.stdout or "").strip()
+    m = _GITHUB.search(url)
+    if r.returncode != 0 or not m:
+        raise AtaqueRecusado(f"o origin do repositório não é do GitHub ({url or 'sem origin'}). "
+                             "Só consigo confirmar o dono pelo GitHub.")
+    return m.group(1), m.group(2)
+
+
+def _permissoes_via_gh(dono: str, repo: str) -> dict | None:
+    gh = shutil.which("gh")
+    if not gh:
+        return None
+    r = subprocess.run([gh, "api", f"repos/{dono}/{repo}", "--jq", ".permissions"],
+                       capture_output=True, text=True, timeout=30)
+    if r.returncode != 0:
+        return None
+    try:
+        return json.loads(r.stdout or "null")
+    except ValueError:
+        return None
+
+
+def _permissoes_via_token(dono: str, repo: str) -> dict | None:
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if not token:
+        return None
+    req = urllib.request.Request(f"https://api.github.com/repos/{dono}/{repo}",
+                                 headers={"Authorization": f"Bearer {token}",
+                                          "Accept": "application/vnd.github+json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310 - API fixa do GitHub
+            return (json.loads(resp.read().decode()) or {}).get("permissions")
+    except (OSError, ValueError):
+        return None
+
+
+def confirmar_dono(pasta: str, buscar=None) -> str:
+    """Devolve 'dono/repo' se o GitHub confirmar que você é ADMIN; senão, recusa."""
+    dono, repo = repositorio_github(pasta)
+    buscar = buscar or (lambda d, r: _permissoes_via_gh(d, r) or _permissoes_via_token(d, r))
+    perms = buscar(dono, repo)
+    if perms is None:
+        raise AtaqueRecusado(
+            f"não consegui perguntar ao GitHub se você administra {dono}/{repo}. Instale o GitHub CLI "
+            "e faça login (winget install GitHub.cli e depois gh auth login) ou defina GITHUB_TOKEN.")
+    if not perms.get("admin"):
+        raise AtaqueRecusado(f"o GitHub diz que você NÃO é administrador de {dono}/{repo}. "
+                             "O modo ataque só roda em repositório seu.")
+    return f"{dono}/{repo}"
+
+
+def exigir_loopback(url: str) -> None:
+    """Defesa extra: toda requisição do ataque tem que ir pra 127.0.0.1/::1 literal."""
+    host = urlsplit(url).hostname or ""
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        raise AtaqueRecusado(f"alvo do ataque tem que ser IP de loopback literal, não '{host}'.") from None
+    if not ip.is_loopback:
+        raise AtaqueRecusado(f"{host} não é loopback. O modo ataque só fala com 127.0.0.1.")

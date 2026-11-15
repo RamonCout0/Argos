@@ -152,13 +152,17 @@ class ApiArgos:
         for u in urls:
             if not re.match(r"^https?://[^\s/]+", u):
                 return {"erro": f"URL inválida: {u} (use http:// ou https://, ex.: http://127.0.0.1:8000)"}
+        ataque = {"carga_max": 512} if p.get("ataque") else None
+        if ataque and not pasta:
+            return {"erro": "O modo ataque precisa da pasta do projeto (é dela que o Argos sobe o laboratório)."}
         if not (pasta or portas or pcap or urls):
             return {"erro": "Diga o que vigiar: uma pasta, portas, URLs do app rodando ou uma captura .pcap."}
         if pasta and not os.path.isdir(pasta):
             return {"erro": f"Pasta não encontrada: {pasta}"}
         if pcap and not os.path.isfile(pcap):
             return {"erro": f"Captura não encontrada: {pcap}"}
-        chave = est.chave_alvo(pasta, portas, pcap) + ("|web:" + ",".join(sorted(urls)) if urls else "")
+        chave = est.chave_alvo(pasta, portas, pcap) + ("|web:" + ",".join(sorted(urls)) if urls else "") \
+            + ("|ataque" if ataque else "")
         alvo = " + ".join(filter(None, [pasta, ("portas " + ", ".join(map(str, portas))) if portas else "", pcap,
                                         ", ".join(urls)]))
 
@@ -166,7 +170,7 @@ class ApiArgos:
             nativo = {"portas": portas, "processo": None, "rede": bool(p.get("rede"))} if portas else None
             trafego = {"pcap": pcap} if pcap else None
             web = {"urls": urls} if urls else None
-            return orq.auditar(pasta or None, nativo, trafego, web)
+            return orq.auditar(pasta or None, nativo, trafego, web, ataque)
         return self._iniciar("auditoria", trabalho, chave, alvo, bool(p.get("ia")))
 
     def testar_ia(self, p: dict) -> dict:

@@ -161,6 +161,39 @@ Pra ver funcionando: `python exemplos/web_inseguro.py` sobe um app errado de pro
 
 ---
 
+## Modo ataque (Fase 7): o teste de verdade
+
+Os scanners dizem "isso parece inseguro". O modo ataque **tenta de verdade** e só acusa o que conseguiu fazer:
+
+```bash
+python cli.py atacar C:\Users\voce\Documents\meu-projeto          # ou a chave "Modo ataque" na interface
+python cli.py atacar ../meu-projeto --carga-max 1024 --prompt-ia pra_ia.md
+```
+
+| Ataque | Como confirma |
+|---|---|
+| **IDOR** (B edita/apaga o que é do A) | o banco mostra o objeto do A apagado ou com o texto do B |
+| **CSRF** (form aceita POST sem token) | o dono manda sem token e o objeto muda mesmo assim |
+| **XSS armazenado e refletido** | o marcador `<argos-xss-…>` volta cru no HTML |
+| **Vazamento de dado pessoal** | o e-mail do A aparece pra anônimo ou pro B |
+| **Injeção SQL** | aspas nos parâmetros dão erro 500 ou erro de banco |
+| **Open redirect no login** | depois do login o servidor manda pra outro site |
+| **Força bruta** | 25 senhas erradas sem bloqueio (403/429 ou aviso novo) |
+| **Carga até cair** | rampa 1→2→4…→512 acessos simultâneos até errar >5%, p95 >5 s ou o servidor cair |
+
+**Como funciona:** o Argos sobe o teu app sozinho num laboratório: banco SQLite **novo**, usuários `argos_a` e `argos_b`, dados de mentira em cada modelo (com marcadores), mapa de quais URLs mexem em quais objetos (lendo o código de cada view). Antes de cada ataque ele fotografa o banco, e só acusa a mudança que o ataque causou (cascata não conta).
+
+**As travas (sem opção pra pular):**
+1. **Só repositório teu:** a pasta tem que ser um repositório git com origem no GitHub, e o GitHub tem que confirmar que você é **administrador** (pelo `gh` logado: `winget install GitHub.cli` e `gh auth login`, ou `GITHUB_TOKEN`).
+2. **Só localhost, só o processo do Argos:** o Argos sobe o app em `127.0.0.1` numa porta livre e só ataca esse processo. Ele nunca se conecta a um servidor que já estava rodando, então nem um túnel apontando pra um site real passa.
+3. **Nada de verdade é tocado:** as chaves do teu `.env` ficam em branco no app atacado (Cloudinary, Brevo, Sentry, Google desligados) e a saída pra internet é bloqueada.
+
+**Validação:** no Gatuno de Estrelas, zero achado grave. Numa cópia com 7 brechas plantadas (IDOR de editar e de apagar, DM de outro, CSRF desligado, `|safe` em post, e-mail no card, login sem limite), o modo ataque confirmou as 7.
+
+Por enquanto é pra projeto **Django** (`manage.py` na raiz). O número do teste de carga é do servidor de desenvolvimento na tua máquina: serve pra comparar antes/depois, não é a capacidade de produção.
+
+---
+
 ## Mandar as brechas pra uma IA corrigir
 
 Na interface, **Copiar pra IA** copia um relatório em Markdown pronto pra colar no Claude (ou **Salvar .md**). Pela linha de comando:
@@ -233,6 +266,7 @@ argos/
   scorer.py            # score + selo
   guard/
     target_lock.py     # a trava loopback/privado (o cofre)
+    ativo.py           # v3.0: trava do modo ataque (admin no GitHub + so loopback)
   report/
     console.py         # relatorio de console, com filtro por lente
     html.py            # relatorio HTML offline (CSP, tudo escapado)
@@ -244,6 +278,11 @@ argos/
     django_deploy.py   # v2.2: manage.py check --deploy com o venv do projeto
     trivy.py           # v2.2: Dockerfile / docker-compose
     permissoes.py      # v2.3: possivel IDOR (editar/apagar sem conferir o dono)
+  ataque/              # v3.0: MODO ATAQUE (Fase 7)
+    executar.py        # trava primeiro, laboratorio depois
+    laboratorio.py     # sobe o app em 127.0.0.1: banco novo, .env em branco, sem internet
+    lab_django.py      # roda DENTRO do projeto: usuarios A/B, dados de mentira, mapa de URLs
+    ataques.py         # IDOR, CSRF, XSS, vazamento, injecao, redirect, forca bruta, carga
     semgrep.py         # SAST poliglota (ponte WSL no Windows)
     bandit.py          # SAST so-Python (extra, nativo no Windows)
     prompt_injection.py # v2.0: teste da tua IA (vazamento, sobrescrita, injecao indireta)
@@ -294,10 +333,12 @@ tests/                 # testes do nucleo e dos parsers
 - **Fase 6 — veredito e relatório (OK):** `auditar` roda as trilhas pedidas e junta tudo num selo só; relatório HTML offline (`--html`) e JSON pra CI (`--saida-json`); `--falhar-em medio|baixo` deixa o selo mais rigoroso (nunca mais frouxo); riscos aceitos com motivo e prazo de até 90 dias em `argos-aceitos.json`.
 - **v1.1 — interface gráfica** (Tkinter, hoje `gui --classico`).
 - **v2.0 — teste de IA e interface nova (OK):** trilha `ia` (prompt injection: vazamento, sobrescrita, injeção indireta) e interface pywebview com olho vetorial por estado.
+- **v3.0 — Fase 7, modo ataque (OK):** `atacar <pasta>`: laboratório local com banco novo e usuários de mentira; IDOR, CSRF, XSS, vazamento, injeção, open redirect, força bruta e carga até cair, tudo confirmado pelo estado do banco. Travas: só repositório em que você é admin no GitHub e só o app que o próprio Argos sobe em 127.0.0.1.
 - **v2.3 — precisão (OK):** filtro de ruído (gerado, teste, framework ausente, regras de auditoria), detector de possível IDOR em Django/DRF, `check --deploy` com chave temporária quando o projeto exige `SECRET_KEY`, erro do semgrep legível.
 - **v2.2 — mais olhos (OK):** OSV-Scanner (dependências de todas as linguagens, com npm audit de reserva), `manage.py check --deploy` com o venv do projeto, gitleaks também no histórico do git, Trivy pra Dockerfile/docker-compose, certificado e versão do TLS na trilha web, e o relatório pra IA (`--prompt-ia` / Copiar pra IA).
 - **v2.1 — trilha web e configuração (OK):** `web <urls>` e `auditar --url` (o que Burp e scanners de diretório revelariam, só passivo) + checagem de configuração do Django/DRF/Angular/.env dentro do `scan`. Na interface: log ao vivo de cada passo (cada scanner, cada requisição, cada sondagem da IA), botão de cancelar que encerra até os programas externos, e um buraco negro que abre atrás do olho enquanto ele vasculha (canvas, respeita "reduzir movimento").
-- **Fase 7 — ideia: DAST com dono verificado.** Scanner web (ex.: OWASP ZAP) só em alvo local ou com verificação de dono. Em produção, apenas modo passivo (baseline: cabeçalhos, cookies, HTTPS); ataque ativo só em localhost/staging. Conferir a política de uso aceitável da hospedagem antes.
+- **Depois:** DAST com dono verificado em staging remoto (ZAP), e modo ataque pra outros frameworks além do Django.
+- ~~Fase 7 — ideia: DAST com dono verificado.~~ Scanner web (ex.: OWASP ZAP) só em alvo local ou com verificação de dono. Em produção, apenas modo passivo (baseline: cabeçalhos, cookies, HTTPS); ataque ativo só em localhost/staging. Conferir a política de uso aceitável da hospedagem antes.
 
 ---
 

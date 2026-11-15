@@ -525,7 +525,7 @@
   async function auditar() {
     const params = {
       pasta: $("#in-pasta").value.trim(), portas: $("#in-portas").value.trim(),
-      pcap: $("#in-pcap").value.trim(), urls: $("#in-urls").value.trim(), rede: $("#in-rede").checked, ia: $("#in-ia").checked,
+      pcap: $("#in-pcap").value.trim(), urls: $("#in-urls").value.trim(), ataque: $("#in-ataque").checked, rede: $("#in-rede").checked, ia: $("#in-ia").checked,
     };
     const r = await api("auditar", params);
     if (!r || r.erro) { toast(r ? r.erro : "Não consegui iniciar.", true); return; }

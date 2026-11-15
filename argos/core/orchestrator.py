@@ -141,13 +141,21 @@ def analisar_web(opcoes: dict, adapters: list[Adapter] | None = None) -> Resulta
     return _rodar(adapters if adapters is not None else WEB, Contexto(projeto="", opcoes=opcoes))
 
 
+def atacar_projeto(pasta: str, opcoes: dict | None = None) -> Resultado:
+    """Fase 7: modo ataque (só repositório do dono, só o app que o Argos sobe em 127.0.0.1)."""
+    from ..ataque.executar import AtaqueAdapter
+    return _rodar([AtaqueAdapter()], Contexto(projeto=pasta, opcoes=opcoes or {}))
+
+
 def auditar(pasta: str | None = None, nativo: dict | None = None,
-            trafego: dict | None = None, web: dict | None = None) -> Resultado:
+            trafego: dict | None = None, web: dict | None = None, ataque: dict | None = None) -> Resultado:
     """Fase 6: roda as trilhas pedidas e junta tudo num veredito so."""
     pedidas = [("codigo", "código parado", pasta, lambda: escanear_projeto(pasta)),
                ("nativo", "portas do app rodando", nativo, lambda: escanear_nativo(nativo)),
                ("trafego", "tráfego HTTP", trafego, lambda: analisar_trafego(trafego)),
-               ("web", "app web visto de fora", web, lambda: analisar_web(web))]
+               ("web", "app web visto de fora", web, lambda: analisar_web(web)),
+               ("ataque", "modo ataque no laboratório local", ataque and pasta,
+                lambda: atacar_projeto(pasta, ataque))]
     partes = []
     for trilha, rotulo, pedida, rodar in pedidas:
         if pedida:
