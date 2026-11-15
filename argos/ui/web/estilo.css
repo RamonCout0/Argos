@@ -386,3 +386,8 @@ body.com-console.console-baixo .toasts { bottom: 80px; }
 
 .chave-ataque span { color: #ff8fa3; }
 .chave-ataque input:checked + .trilho { background: #ff4d6d; border-color: #ff4d6d; }
+
+.linha-resumo.historico { align-items: center; }
+.spark { width: 120px; height: 36px; flex: none; }
+.spark polyline { fill: none; stroke: var(--acento); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.spark circle { fill: var(--acento-2); }

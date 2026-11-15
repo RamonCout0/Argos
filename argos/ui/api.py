@@ -95,6 +95,7 @@ class ApiArgos:
             "aceitos": [{"titulo": f.titulo, "justificativa": f.justificativa,
                          "sev": f.severidade.value} for f in p.riscos_aceitos],
             "lgpd": self._lgpd(chave),
+            "historico": est.historico(self._estado, chave)[-20:],
             "resolvidos": c["resolvidos"],
             "chave": chave,
             "meta": {**c["meta"], "pulados": [list(x) for x in c["meta"].get("pulados", [])]},

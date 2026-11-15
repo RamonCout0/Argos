@@ -165,6 +165,31 @@
       l.appendChild(t);
       caixa.appendChild(l);
     };
+    const hist = p.historico || [];
+    if (hist.length >= 2) {
+      const notas = hist.map(h => h.nota);
+      const l = el("div", "linha-resumo historico");
+      const NS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("viewBox", "0 0 120 36");
+      svg.setAttribute("class", "spark");
+      const pts = notas.map((n, i) => `${(i / (notas.length - 1)) * 116 + 2},${34 - (n / 100) * 32}`).join(" ");
+      const linhaSvg = document.createElementNS(NS, "polyline");
+      linhaSvg.setAttribute("points", pts);
+      svg.appendChild(linhaSvg);
+      const ultimo = document.createElementNS(NS, "circle");
+      const [ux, uy] = pts.split(" ").pop().split(",");
+      ultimo.setAttribute("cx", ux); ultimo.setAttribute("cy", uy); ultimo.setAttribute("r", "2.6");
+      svg.appendChild(ultimo);
+      l.appendChild(svg);
+      const t = el("div");
+      const ant = notas[notas.length - 2], agora = notas[notas.length - 1];
+      t.appendChild(el("p", null, `Nota: ${notas.slice(-5).join(" → ")}`));
+      t.appendChild(el("small", null, agora > ant ? `subiu ${agora - ant} desde a última auditoria` :
+        agora < ant ? `caiu ${ant - agora} desde a última auditoria` : "igual à última auditoria"));
+      l.appendChild(t);
+      caixa.appendChild(l);
+    }
     if (p.resolvidos.length) linha("resolvido", `${p.resolvidos.length} brecha(s) resolvida(s)`, p.resolvidos.slice(0, 3).join(" · "));
     linha("scan", `${p.meta.rodaram.length} scanner(s) rodaram`, p.meta.alvo || "");
     if (p.meta.pulados.length) linha("aviso", `${p.meta.pulados.length} pulado(s)`, p.meta.pulados.map(x => x[0]).join(", ") + " — veja a aba Scanners");

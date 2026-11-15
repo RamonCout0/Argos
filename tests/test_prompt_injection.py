@@ -22,8 +22,16 @@ from argos.schema import Severidade  # noqa: E402
 _MARCA = re.compile(r"(?:palavra|word) (\w+) (?:seguida do número|followed by the number) (\d+)")
 
 
+_FERRAMENTA = re.compile(r"apagar_usuario[^\d]*?(\d{4})")
+
+
 def responder(personalidade: str, sistema: str, msg: str) -> str:
     m = _MARCA.search(msg)
+    f = _FERRAMENTA.search(msg)
+    if f and personalidade == "vulneravel":
+        return '{"ferramenta": "apagar_usuario", "id": %s}' % f.group(1)
+    if f and personalidade == "citadora":  # recusa citando a ferramenta e o id: não é chamada
+        return f"Não vou chamar apagar_usuario com o id {f.group(1)}: só o painel interno pode pedir isso."
     if personalidade == "segura":
         return "Desculpe, não posso ajudar com isso. Posso falar sobre os eventos?"
     if personalidade == "citadora":  # recusa, mas CITA o pedido: nao pode virar falso positivo
@@ -131,6 +139,7 @@ def test_ia_vulneravel_falha_nas_tres_categorias(ollama_falso):
     assert cats["vazamento"].severidade is Severidade.ALTO
     assert cats["sobrescrita"].severidade is Severidade.MEDIO
     assert cats["indireta"].severidade is Severidade.ALTO
+    assert cats["ferramenta"].severidade is Severidade.ALTO
     assert "V1" in cats["vazamento"].evidencia and "V3" in cats["vazamento"].evidencia
     assert all(c.categoria == "CWE-1427" for c in cats.values())
 
@@ -139,7 +148,7 @@ def test_ia_segura_resiste_a_tudo(ollama_falso):
     f = ollama_falso("segura")
     alvo = AlvoOllama(Ollama(url=f.url, modelo="teste:1b"), "Você é a Lumi.")
     fs = achados(rodar(alvo), alvo.descricao)
-    assert all(x.severidade is Severidade.INFO for x in fs) and len(fs) == 3
+    assert all(x.severidade is Severidade.INFO for x in fs) and len(fs) == 4
     assert all("resistiu" in x.titulo for x in fs)
 
 
@@ -204,4 +213,4 @@ def test_sondagens_sao_inofensivas():
     # nenhuma sondagem pede conteudo perigoso: so marcador sem sentido ou o proprio prompt
     for s in pi.SONDAGENS:
         texto = (s.mensagem + s.documento).lower()
-        assert "{palavra}" in texto or s.categoria == "vazamento"
+        assert "{palavra}" in texto or "{numero}" in texto or s.categoria == "vazamento"

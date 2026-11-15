@@ -71,8 +71,17 @@ def campo_dono(model):
     return fks[0] if fks else None
 
 
+PRIVADO = re.compile(r"(message|mensag|directmessage|\bdm\b|notification|notifica|private|privad|secret|"
+                     r"segred|token|password|senha|address|endereco|phone|telefone|cpf|payment|pagament|"
+                     r"invoice|fatura|report|denuncia)", re.I)
+
+
+def texto_do_modelo(model_name):
+    return f"argos {R} {model_name.lower()} {XSS}"
+
+
 def valor(f):
-    """Valor de mentira válido pro campo (texto sempre leva o marcador de XSS)."""
+    """Valor de mentira válido pro campo (texto sempre leva o marcador de XSS e o nome do modelo)."""
     if f.choices:
         return f.choices[0][0]
     if isinstance(f, models.EmailField):
@@ -83,7 +92,8 @@ def valor(f):
         return f"argos-{R}-{_rand(5)}"[: f.max_length or 50]
     if isinstance(f, (models.CharField, models.TextField)):
         maximo = getattr(f, "max_length", None) or 2000
-        t = TEXTO if maximo >= len(TEXTO) + 6 else f"argos{R}"
+        texto = texto_do_modelo(f.model._meta.model_name)
+        t = texto if maximo >= len(texto) + 6 else (TEXTO if maximo >= len(TEXTO) + 6 else f"argos{R}")
         return (t + " " + _rand(4))[:maximo] if f.unique else t[:maximo]
     if isinstance(f, models.BooleanField):
         return False
@@ -187,6 +197,45 @@ def sessao(user):
 
 _REF_MODELO = [re.compile(r"get_object_or_404\(\s*(\w+)"), re.compile(r"\bmodel\s*=\s*(\w+)"),
                re.compile(r"\bqueryset\s*=\s*(\w+)\."), re.compile(r"\b(\w+)\.(?:objects|_default_manager)\b")]
+
+
+PRIVILEGIO = re.compile(r"\b(is_staff|is_superuser|user_is_developer|staff_member_required|superuser_required|"
+                        r"DeveloperRequiredMixin|PermissionRequiredMixin|permission_required|has_perm\(|"
+                        r"IsAdminUser|AdminRequired\w*|StaffRequired\w*)")
+
+
+def fonte_da_view(callback):
+    import inspect
+    alvo = getattr(callback, "view_class", None) or getattr(callback, "cls", None) or callback
+    alvo = getattr(alvo, "__wrapped__", alvo)
+    try:
+        fonte = inspect.getsource(alvo)
+    except (OSError, TypeError):
+        return ""
+    # mixins e permissões DO PROJETO também contam (os do Django/DRF não: o código interno deles
+    # fala de permissão o tempo todo e faria toda view parecer restrita)
+    def do_projeto(obj):
+        try:
+            arq = os.path.abspath(inspect.getsourcefile(obj) or "")
+        except TypeError:
+            return False
+        return arq.startswith(RAIZ) and "site-packages" not in arq
+
+    for base in getattr(alvo, "__mro__", ())[1:]:
+        if do_projeto(base):
+            try:
+                fonte += "\n" + inspect.getsource(base)
+            except (OSError, TypeError):
+                pass
+    perms = getattr(alvo, "permission_classes", None) or []
+    nomes = " ".join(getattr(p, "__name__", "") for p in perms if not do_projeto(p))
+    for p in perms:
+        if do_projeto(p):
+            try:
+                nomes += "\n" + inspect.getsource(p)
+            except (OSError, TypeError):
+                pass
+    return fonte + " " + nomes
 
 
 def modelos_da_view(callback, por_nome):
@@ -301,7 +350,9 @@ def preparar():
                 continue
             if url not in vistos:
                 vistos.add(url)
-                sem_args.append({"url": url, "nome": nome})
+                fonte = fonte_da_view(callback)
+                sem_args.append({"url": url, "nome": nome, "privilegiada": bool(PRIVILEGIO.search(fonte)),
+                                 "api": "/api/" in url})
             continue
         alvos = modelos_da_view(callback, por_nome)
         for m, obj in criados.items():
@@ -325,6 +376,7 @@ def preparar():
                 continue
             vistos.add(url)
             candidatos.append({"url": url, "nome": nome, "rota": rota, "modelo": m._meta.label,
+                               "privilegiada": bool(PRIVILEGIO.search(fonte_da_view(callback))),
                                "pk": str(obj.pk), "dono_a": bool(dono is not None and dono.pk == users["a"].pk),
                                "mutacao": bool(MUTACAO.search(nome) or MUTACAO.search(rota)),
                                "api": "/api/" in url})
@@ -338,13 +390,121 @@ def preparar():
             continue
     if login is None and str(getattr(settings, "LOGIN_URL", "")).startswith("/"):
         login = settings.LOGIN_URL
+    pessoais = dados_pessoais()
+    ws = rotas_websocket(criados, users["a"])
     print(json.dumps({
         "marcador": R, "xss": XSS, "senha": senha, "login_url": login,
+        "pessoais": pessoais, "ws": ws,
+        "privados": [m._meta.model_name for m in criados if PRIVADO.search(m._meta.model_name)],
+        "reset_url": _reverse_primeiro(("password_reset", "account_reset_password", "accounts:password_reset")),
         "usuarios": {k: {"id": u.pk, "username": u.get_username(), "email": u.email, "sessao": sessao(u)}
                      for k, u in users.items()},
         "objetos": objetos, "falhas_seed": falhas, "candidatos": candidatos, "rotas": sem_args,
         "sessao_cookie": settings.SESSION_COOKIE_NAME, "csrf_cookie": settings.CSRF_COOKIE_NAME,
     }, default=str))
+
+
+def _reverse_primeiro(nomes):
+    for nome in nomes:
+        try:
+            return reverse(nome)
+        except NoReverseMatch:
+            continue
+    return None
+
+
+PESSOAL = [("e-mail", r"e[-_]?mail"), ("telefone", r"(phone|telefone|celular|whats)"), ("CPF", r"\bcpf\b|_cpf|cpf_"),
+           ("RG", r"(^|_)rg($|_)"), ("endereço", r"(address|endereco|logradouro|cep|zip)"),
+           ("nascimento", r"(birth|nascimento|data_nasc|idade|\bage\b)"), ("IP", r"(^|_)ip($|_)|ip_address|remote_addr"),
+           ("localização", r"(latitude|longitude|localiza|location|geo)"), ("gênero", r"(gender|genero|sexo)"),
+           ("documento", r"(document|documento|passport|passaporte)"), ("nome completo", r"(full_name|nome_completo)"),
+           ("foto", r"(avatar|foto|photo|selfie)")]
+
+
+def dados_pessoais():
+    """Onde o projeto guarda dado pessoal (pelo nome do campo). Base do mapa LGPD."""
+    mapa = []
+    modelos = [m for app in apps_do_projeto() for m in app.get_models()] + [User]
+    for m in dict.fromkeys(modelos):
+        achados = []
+        for f in m._meta.concrete_fields:
+            for rotulo, rx in PESSOAL:
+                if re.search(rx, f.name, re.I):
+                    achados.append({"campo": f.name, "tipo": rotulo})
+                    break
+        if achados:
+            mapa.append({"modelo": m._meta.label, "campos": achados})
+    return mapa
+
+
+def rotas_websocket(criados, dono):
+    """URLs de WebSocket (Django Channels) preenchidas com IDs/nomes do A."""
+    rotas = []
+    for app in apps_do_projeto():
+        try:
+            mod = import_module(f"{app.name}.routing")
+        except Exception:  # noqa: BLE001 - app sem routing
+            continue
+        for p in getattr(mod, "websocket_urlpatterns", []) or []:
+            rota = str(p.pattern)
+            chaves = re.findall(r"<(?:\w+:)?(\w+)>", rota) + re.findall(r"\(\?P<(\w+)>", rota)
+            url = "/" + rota.lstrip("^").rstrip("$").lstrip("/")
+            if not chaves:
+                rotas.append({"url": url, "proprio": True})
+                continue
+            for obj in list(criados.values())[:60]:
+                vals = {}
+                for c in chaves:
+                    v = _valores(obj, c, dono)
+                    if not v:
+                        break
+                    vals[c] = v[0]
+                if len(vals) != len(chaves):
+                    continue
+                concreta = url
+                for c, v in vals.items():
+                    concreta = re.sub(r"<(?:\w+:)?" + c + r">|\(\?P<" + c + r">[^)]*\)", str(v), concreta)
+                rotas.append({"url": concreta, "proprio": False, "modelo": obj._meta.label})
+                break
+    return rotas
+
+
+def buscar():
+    """Procura marcadores em todas as tabelas do projeto (e no usuário B)."""
+    pedido = json.loads(sys.stdin.read() or "{}")
+    marcas = pedido.get("marcas", [])
+    saida = {m: [] for m in marcas}
+    modelos = [m for app in apps_do_projeto() for m in app.get_models()]
+    for m in modelos:
+        textos = [f for f in m._meta.concrete_fields if isinstance(f, (models.CharField, models.TextField))]
+        if not textos:
+            continue
+        donos = [f for f in m._meta.concrete_fields if isinstance(f, models.ForeignKey)
+                 and issubclass(f.related_model, User)]
+        for marca in marcas:
+            q = models.Q()
+            for f in textos:
+                q |= models.Q(**{f"{f.name}__contains": marca})
+            for obj in m._default_manager.filter(q)[:20]:
+                saida[marca].append({"modelo": m._meta.label, "pk": str(obj.pk),
+                                     "donos": {f.name: getattr(obj, f.attname) for f in donos}})
+    usuarios = {}
+    for uid in pedido.get("usuarios", []):
+        u = User.objects.filter(pk=uid).first()
+        if u is not None:
+            usuarios[str(uid)] = {"is_staff": u.is_staff, "is_superuser": u.is_superuser,
+                                  "grupos": list(u.groups.values_list("name", flat=True)), "email": u.email}
+    # relação de um usuário consigo mesmo (seguir a si mesmo, mensagem pra si...)
+    auto = []
+    for uid in pedido.get("autorrelacao", []):
+        for m in modelos:
+            fks = [f for f in m._meta.concrete_fields if isinstance(f, models.ForeignKey)
+                   and issubclass(f.related_model, User)]
+            if len(fks) >= 2:
+                filtro = {fks[0].attname: uid, fks[1].attname: uid}
+                if m._default_manager.filter(**filtro).exists():
+                    auto.append(m._meta.label)
+    print(json.dumps({"marcas": saida, "usuarios": usuarios, "autorrelacao": auto}, default=str))
 
 
 def estado():
@@ -364,4 +524,4 @@ def estado():
 
 
 if __name__ == "__main__":
-    {"preparar": preparar, "estado": estado}[sys.argv[1]]()
+    {"preparar": preparar, "estado": estado, "buscar": buscar}[sys.argv[1]]()

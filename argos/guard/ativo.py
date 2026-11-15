@@ -79,10 +79,37 @@ def _permissoes_via_token(dono: str, repo: str) -> dict | None:
         return None
 
 
+def _execucao_do_actions(dono: str, repo: str) -> dict | None:
+    """No GitHub Actions não existe `gh auth login`. A prova é outra: o GitHub confirma, com o token
+    que ele mesmo dá SÓ pra esta execução, que a execução existe NESTE repositório. Pra forjar,
+    seria preciso uma execução real e um token válido do repositório."""
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return None
+    alvo = f"{dono}/{repo}".lower()
+    if (os.environ.get("GITHUB_REPOSITORY") or "").lower() != alvo:
+        return {"admin": False}
+    token, run = os.environ.get("GITHUB_TOKEN"), os.environ.get("GITHUB_RUN_ID")
+    if not token or not run:
+        return None
+    req = urllib.request.Request(f"https://api.github.com/repos/{dono}/{repo}/actions/runs/{run}",
+                                 headers={"Authorization": f"Bearer {token}",
+                                          "Accept": "application/vnd.github+json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310 - API fixa do GitHub
+            dados = json.loads(resp.read().decode()) or {}
+    except (OSError, ValueError):
+        return None
+    nome = ((dados.get("repository") or {}).get("full_name") or "").lower()
+    # o workflow só existe porque alguém com escrita no repositório o colocou lá
+    return {"admin": nome == alvo and str(dados.get("id")) == str(run), "via": "actions"}
+
+
 def confirmar_dono(pasta: str, buscar=None) -> str:
-    """Devolve 'dono/repo' se o GitHub confirmar que você é ADMIN; senão, recusa."""
+    """Devolve 'dono/repo' se o GitHub confirmar que você é ADMIN (ou que é o CI do próprio
+    repositório, provado pela API); senão, recusa."""
     dono, repo = repositorio_github(pasta)
-    buscar = buscar or (lambda d, r: _permissoes_via_gh(d, r) or _permissoes_via_token(d, r))
+    buscar = buscar or (lambda d, r: _execucao_do_actions(d, r) or _permissoes_via_gh(d, r)
+                        or _permissoes_via_token(d, r))
     perms = buscar(dono, repo)
     if perms is None:
         raise AtaqueRecusado(

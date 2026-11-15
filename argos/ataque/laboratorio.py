@@ -196,6 +196,20 @@ class Laboratorio:
         except (ValueError, IndexError):
             raise LabFalhou("não consegui ler o estado do banco: " + (proc.stderr or "")[-200:]) from None
 
+    def buscar(self, marcas=(), usuarios=(), autorrelacao=()) -> dict:
+        """Procura marcadores em todas as tabelas, e lê o estado dos usuários."""
+        pedido = {"marcas": list(marcas), "usuarios": list(usuarios), "autorrelacao": list(autorrelacao)}
+        proc = progresso.rodar([self.python, LAB, "buscar"], timeout=180, cwd=self.projeto,
+                               env=self._ambiente(), input=json.dumps(pedido))
+        try:
+            return json.loads((proc.stdout or "").strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            raise LabFalhou("não consegui procurar no banco: " + (proc.stderr or "")[-200:]) from None
+
+    @property
+    def pasta_temporaria(self) -> str:
+        return self._tmp
+
     def __exit__(self, *exc):
         if self._servidor is not None and self._servidor.poll() is None:
             self._servidor.kill()

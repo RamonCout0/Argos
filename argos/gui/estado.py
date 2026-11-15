@@ -87,6 +87,16 @@ def registrar_scan(estado: dict, chave: str, findings: list[Finding]) -> None:
     p["ultimo"] = {fingerprint(f): f.titulo for f in findings if conta(f)}
     p["feitos"] = [fp for fp in p["feitos"] if fp in p["ultimo"]]  # resolvido limpa a marca
     p["quando"] = dt.datetime.now().isoformat(timespec="seconds")
+    from ..scorer import calcular
+    placar = calcular(findings)
+    hist = p.setdefault("historico", [])
+    hist.append({"quando": p["quando"], "nota": placar.score, "aprovado": placar.aprovado,
+                 "por_severidade": dict(placar.por_severidade), "abertos": placar.abertos})
+    del hist[:-60]  # guarda as últimas 60 auditorias
+
+
+def historico(estado: dict, chave: str) -> list[dict]:
+    return list(_projeto(estado, chave).get("historico", []))
 
 
 def progresso(estado: dict, chave: str, findings: list[Finding]) -> tuple[int, int]:

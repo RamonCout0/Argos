@@ -78,6 +78,7 @@ Pra quem faz app com LLM (Ollama, bot de Discord, automação que lê documentos
 | LLM07 · vazamento do prompt | fazer a IA revelar o prompt de sistema | alto |
 | LLM01 · sobrescrita | uma mensagem do usuário mudar as regras | médio |
 | LLM01 · injeção indireta | uma instrução escondida num documento comandar a IA | alto |
+| LLM06 · abuso de ferramenta | a IA chamar uma ferramenta perigosa (`apagar_usuario`) a pedido do usuário ou de um texto de terceiro | alto |
 
 ```bash
 python cli.py ia --sistema meu_prompt.txt --modelo llama3.1:8b          # direto no teu Ollama
@@ -180,6 +181,15 @@ python cli.py atacar ../meu-projeto --carga-max 1024 --prompt-ia pra_ia.md
 | **Open redirect no login** | depois do login o servidor manda pra outro site |
 | **Força bruta** | 25 senhas erradas sem bloqueio (403/429 ou aviso novo) |
 | **Carga até cair** | rampa 1→2→4…→512 acessos simultâneos até errar >5%, p95 >5 s ou o servidor cair |
+| **Escalada de privilégio** | a tela barra o usuário comum (GET recusado), mas o POST dele cria/altera no banco |
+| **Mass assignment** | o B manda `is_staff`, `user=<id do A>`… a mais e o banco grava (B vira staff ou cria em nome do A) |
+| **Conteúdo privado vazando** | o texto de uma DM/notificação do A aparece pro B ou anônimo, no HTML **ou no JSON da API** |
+| **WebSocket** | B mantém conexão no canal privado do A (chat/DM/notificação), ou anônimo num canal privado |
+| **Upload malicioso** | SVG com script, HTML disfarçado de PNG, nome com `../` (arquivo fora da mídia) e 25 MB aceitos |
+| **Abuso de lógica** | "esqueci a senha" revela se o e-mail existe; seguir a si mesmo; 40 envios seguidos sem limite |
+| **Entrada absurda** | campos com 12 mil caracteres ou -1 não podem dar erro 500 |
+
+O laboratório também monta o **mapa de dados pessoais (LGPD)**: em quais modelos e campos ficam e-mail, telefone, CPF, endereço, IP, foto… (aparece como INFO, lente LGPD).
 
 **Como funciona:** o Argos sobe o teu app sozinho num laboratório: banco SQLite **novo**, usuários `argos_a` e `argos_b`, dados de mentira em cada modelo (com marcadores), mapa de quais URLs mexem em quais objetos (lendo o código de cada view). Antes de cada ataque ele fotografa o banco, e só acusa a mudança que o ataque causou (cascata não conta).
 
@@ -188,9 +198,23 @@ python cli.py atacar ../meu-projeto --carga-max 1024 --prompt-ia pra_ia.md
 2. **Só localhost, só o processo do Argos:** o Argos sobe o app em `127.0.0.1` numa porta livre e só ataca esse processo. Ele nunca se conecta a um servidor que já estava rodando, então nem um túnel apontando pra um site real passa.
 3. **Nada de verdade é tocado:** as chaves do teu `.env` ficam em branco no app atacado (Cloudinary, Brevo, Sentry, Google desligados) e a saída pra internet é bloqueada.
 
-**Validação:** no Gatuno de Estrelas, zero achado grave. Numa cópia com 7 brechas plantadas (IDOR de editar e de apagar, DM de outro, CSRF desligado, `|safe` em post, e-mail no card, login sem limite), o modo ataque confirmou as 7.
+**Validação:** no Gatuno de Estrelas, zero achado médio ou pior (só um aviso baixo: SVG aceito num upload que só staff faz). Numa cópia com 10 brechas plantadas (IDOR de editar e de apagar, DM de outro, CSRF desligado, `|safe` em post, e-mail no card, login sem limite, mixin de dev que deixa o POST passar, `created_by` vindo do formulário e caixa de entrada com as DMs de todo mundo), o modo ataque confirmou as 10.
 
 Por enquanto é pra projeto **Django**. Não precisa rodar nada antes: o Argos sobe o app sozinho. Em projeto Django + Angular, aponte a pasta do projeto inteiro: ele acha o `manage.py` nas subpastas (ex.: `src/backend_django/`) e o `.git` subindo até a raiz. O Angular não precisa subir, porque o ataque vai direto no backend, como faria um atacante de verdade (o front não protege nada sozinho). O número do teste de carga é do servidor de desenvolvimento na tua máquina: serve pra comparar antes/depois, não é a capacidade de produção.
+
+---
+
+## Argos no GitHub Actions
+
+```bash
+python cli.py ci-github C:\Users\voce\Documents\meu-projeto
+```
+
+Cria `.github/workflows/argos.yml`: a cada push na `main` e em todo pull request o GitHub roda o scan e o modo ataque (no laboratório do próprio runner, nunca em produção), guarda os relatórios (HTML, JSON e o `.md` pra IA) como artefato e deixa o check **vermelho** se aparecer brecha alta ou pior. A trava no CI não usa `gh auth login`: o Argos pergunta à API do GitHub, com o token que o GitHub dá só pra aquela execução, se ela existe de verdade naquele repositório.
+
+## Histórico da nota
+
+Cada auditoria (interface ou terminal) guarda a nota por alvo. A interface desenha a curva no cartão "Desde o último scan" ("Nota: 62 → 85 → 97, subiu 12"); no terminal, `python cli.py historico`.
 
 ---
 
@@ -283,6 +307,8 @@ argos/
     laboratorio.py     # sobe o app em 127.0.0.1: banco novo, .env em branco, sem internet
     lab_django.py      # roda DENTRO do projeto: usuarios A/B, dados de mentira, mapa de URLs
     ataques.py         # IDOR, CSRF, XSS, vazamento, injecao, redirect, forca bruta, carga
+    ataques_extra.py   # v3.1: privilegio, mass assignment, API/WebSocket, upload, logica, mapa LGPD
+  ci.py                # v3.1: gera o workflow do GitHub Actions
     semgrep.py         # SAST poliglota (ponte WSL no Windows)
     bandit.py          # SAST so-Python (extra, nativo no Windows)
     prompt_injection.py # v2.0: teste da tua IA (vazamento, sobrescrita, injecao indireta)
@@ -333,6 +359,7 @@ tests/                 # testes do nucleo e dos parsers
 - **Fase 6 — veredito e relatório (OK):** `auditar` roda as trilhas pedidas e junta tudo num selo só; relatório HTML offline (`--html`) e JSON pra CI (`--saida-json`); `--falhar-em medio|baixo` deixa o selo mais rigoroso (nunca mais frouxo); riscos aceitos com motivo e prazo de até 90 dias em `argos-aceitos.json`.
 - **v1.1 — interface gráfica** (Tkinter, hoje `gui --classico`).
 - **v2.0 — teste de IA e interface nova (OK):** trilha `ia` (prompt injection: vazamento, sobrescrita, injeção indireta) e interface pywebview com olho vetorial por estado.
+- **v3.1 — ataque completo (OK):** escalada de privilégio, mass assignment, vazamento privado em HTML/JSON, WebSocket, upload malicioso, abuso de lógica, entrada absurda, mapa de dados pessoais, histórico da nota, GitHub Actions e abuso de ferramenta no teste de IA.
 - **v3.0 — Fase 7, modo ataque (OK):** `atacar <pasta>`: laboratório local com banco novo e usuários de mentira; IDOR, CSRF, XSS, vazamento, injeção, open redirect, força bruta e carga até cair, tudo confirmado pelo estado do banco. Travas: só repositório em que você é admin no GitHub e só o app que o próprio Argos sobe em 127.0.0.1.
 - **v2.3 — precisão (OK):** filtro de ruído (gerado, teste, framework ausente, regras de auditoria), detector de possível IDOR em Django/DRF, `check --deploy` com chave temporária quando o projeto exige `SECRET_KEY`, erro do semgrep legível.
 - **v2.2 — mais olhos (OK):** OSV-Scanner (dependências de todas as linguagens, com npm audit de reserva), `manage.py check --deploy` com o venv do projeto, gitleaks também no histórico do git, Trivy pra Dockerfile/docker-compose, certificado e versão do TLS na trilha web, e o relatório pra IA (`--prompt-ia` / Copiar pra IA).

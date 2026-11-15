@@ -10,6 +10,8 @@ Trilhas separadas:
   python cli.py nativo --listar              -> tudo que esta escutando na maquina
   python cli.py trafego [--segundos 30]      -> dado sensivel em HTTP sem TLS (ao vivo)
   python cli.py trafego --pcap arquivo.pcap  -> analisa uma captura do Wireshark
+  python cli.py ci-github <pasta>            -> workflow do GitHub Actions: scan + ataque a cada push
+  python cli.py historico                    -> a nota de cada alvo ao longo do tempo
   python cli.py atacar <pasta>               -> MODO ATAQUE (Fase 7): IDOR, CSRF, XSS, injecao, forca
                                                 bruta e carga ate cair, no app local; so repo seu
   python cli.py web http://127.0.0.1:8000    -> o app no navegador: cabecalhos, CORS, cookies,
@@ -200,6 +202,51 @@ def _exportar(findings, meta, args, limite) -> None:
         print(f"relatorio pra IA: {os.path.abspath(args.prompt_ia)}  (cole no Claude e peca as correcoes)")
 
 
+def _registrar_historico(alvo: str, findings) -> None:
+    """A CLI também alimenta o histórico da nota (o mesmo arquivo da interface)."""
+    try:
+        from argos.gui import estado as est
+        estado = est.carregar(est.ARQUIVO)
+        est.registrar_scan(estado, "cli:" + (alvo or "?"), findings)
+        est.salvar(estado, est.ARQUIVO)
+    except Exception:  # noqa: BLE001 - histórico é conveniência, nunca derruba o scan
+        pass
+
+
+def cmd_ci_github(args) -> int:
+    from argos.ci import gerar
+    try:
+        destino = gerar(args.pasta, falhar=args.falhar_em, carga=args.carga_max, sobrescrever=args.sobrescrever)
+    except FileExistsError as e:
+        print(f"Já existe {e}. Use --sobrescrever pra gerar de novo.")
+        return 1
+    print(f"Workflow criado: {destino}")
+    print("Commit e push dele: a cada push na main e em todo pull request o GitHub roda o scan e o modo")
+    print("ataque (no laboratório do próprio runner) e deixa o check vermelho se achar brecha "
+          f"'{args.falhar_em}' ou pior. Os relatórios ficam no artefato 'relatorios-argos'.")
+    return 0
+
+
+def cmd_historico(args) -> int:
+    from argos.gui import estado as est
+    estado = est.carregar(est.ARQUIVO)
+    projetos = estado.get("projetos", {}) if isinstance(estado, dict) else {}
+    achou = False
+    for chave, p in projetos.items():
+        hist = p.get("historico") or []
+        if not hist or (args.alvo and args.alvo.lower() not in chave.lower()):
+            continue
+        achou = True
+        print(f"\n{chave}")
+        for h in hist[-15:]:
+            barra = "#" * (h["nota"] // 5)
+            print(f"  {h['quando'][:16].replace('T', ' ')}  {h['nota']:>3}/100  {barra:<20} "
+                  f"{'liberado' if h['aprovado'] else 'BLOQUEADO'}  ({h['abertos']} aberto(s))")
+    if not achou:
+        print("Sem histórico ainda: rode uma auditoria (scan, web, atacar, auditar ou pela interface).")
+    return 0
+
+
 def _finalizar(res: Resultado, args, alvo: str = "") -> int:
     """Mesma saida pras trilhas: status dos scanners, aceites, IA, relatorios, codigo de saida."""
     if res.rodaram:
@@ -217,6 +264,7 @@ def _finalizar(res: Resultado, args, alvo: str = "") -> int:
     print(render(res.findings, json_tambem=getattr(args, "json", False),
                  lente=_lente(args), limite=limite))
     _salvar_ultimo(res.findings)
+    _registrar_historico(alvo, res.findings)
     meta = {"alvo": alvo, "rodaram": res.rodaram, "pulados": res.pulados,
             "fundidos": res.fundidos, "avisos": avisos}
     _exportar(res.findings, meta, args, limite)
@@ -579,6 +627,17 @@ def build_parser() -> argparse.ArgumentParser:
     ac.add_argument("--motivo", required=True, help="por que isso nao e um problema (min. 10 letras)")
     ac.add_argument("--dias", type=int, default=30, help=f"validade (1 a {mod_aceitos.MAX_DIAS})")
     ac.set_defaults(func=cmd_aceitar)
+
+    ci = sub.add_parser("ci-github", help="cria o workflow do GitHub Actions (scan + ataque a cada push)")
+    ci.add_argument("pasta", help="raiz do repositório do projeto")
+    ci.add_argument("--falhar-em", choices=["alto", "medio", "baixo"], default="alto")
+    ci.add_argument("--carga-max", type=int, default=64)
+    ci.add_argument("--sobrescrever", action="store_true")
+    ci.set_defaults(func=cmd_ci_github)
+
+    hi = sub.add_parser("historico", help="a nota de cada alvo ao longo do tempo")
+    hi.add_argument("--alvo", help="filtra pelo nome do alvo/pasta")
+    hi.set_defaults(func=cmd_historico)
 
     al = sub.add_parser("aceitos", help="lista os riscos aceitos e os vencimentos")
     al.set_defaults(func=cmd_aceitos)

@@ -56,7 +56,8 @@ class Sessao:
         self.csrf_cookie = csrf_cookie
         self.base = base
 
-    def pedir(self, metodo, caminho, dados=None, json_=None, headers=None, csrf=True, timeout=20) -> Resposta | None:
+    def pedir(self, metodo, caminho, dados=None, json_=None, headers=None, csrf=True, timeout=20,
+              arquivos=None) -> Resposta | None:
         if not caminho.startswith("/"):
             raise ValueError("o ataque só usa caminhos relativos ao laboratório")
         progresso.checar()
@@ -65,13 +66,16 @@ class Sessao:
         if json_ is not None:
             corpo = json.dumps(json_).encode()
             h["Content-Type"] = "application/json"
-        elif dados is not None:
-            dados = dict(dados)
+        elif dados is not None or arquivos:
+            dados = dict(dados or {})
             dados.pop("csrfmiddlewaretoken", None)  # token copiado de outro form/sessão não vale
             if csrf and self.cookies.get(self.csrf_cookie):
                 dados["csrfmiddlewaretoken"] = self.cookies[self.csrf_cookie]
-            corpo = urlencode(dados, doseq=True).encode()
-            h["Content-Type"] = "application/x-www-form-urlencoded"
+            if arquivos:
+                corpo, h["Content-Type"] = _multipart(dados, arquivos)
+            else:
+                corpo = urlencode(dados, doseq=True).encode()
+                h["Content-Type"] = "application/x-www-form-urlencoded"
         if csrf and metodo not in ("GET", "HEAD") and self.cookies.get(self.csrf_cookie):
             h["X-CSRFToken"] = self.cookies[self.csrf_cookie]
             h["Referer"] = self.base + "/"
@@ -104,6 +108,73 @@ class Sessao:
             import string
             self.cookies[self.csrf_cookie] = "".join(secrets.choice(string.ascii_letters + string.digits)
                                                      for _ in range(32))
+
+
+def _multipart(dados: dict, arquivos: dict) -> tuple[bytes, str]:
+    import secrets as _s
+    borda = "argos" + _s.token_hex(12)
+    partes = []
+    for k, v in dados.items():
+        for item in (v if isinstance(v, list) else [v]):
+            partes.append(f'--{borda}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{item}\r\n'.encode())
+    for k, (nome, conteudo, tipo) in arquivos.items():
+        partes.append(f'--{borda}\r\nContent-Disposition: form-data; name="{k}"; filename="{nome}"\r\n'
+                      f'Content-Type: {tipo}\r\n\r\n'.encode() + conteudo + b"\r\n")
+    partes.append(f"--{borda}--\r\n".encode())
+    return b"".join(partes), f"multipart/form-data; boundary={borda}"
+
+
+class _Forms(HTMLParser):
+    """Todos os <form method=post>: ação, campos (com valor atual) e campos de arquivo."""
+
+    def __init__(self):
+        super().__init__()
+        self.forms, self._atual, self._area, self._select = [], None, None, None
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "form" and (a.get("method") or "").lower() == "post":
+            self._atual = {"acao": a.get("action") or "", "campos": {}, "arquivos": []}
+            self.forms.append(self._atual)
+            return
+        f = self._atual
+        if f is None:
+            return
+        nome = a.get("name")
+        if tag == "input" and nome:
+            tipo = (a.get("type") or "text").lower()
+            if tipo == "file":
+                f["arquivos"].append(nome)
+            elif tipo not in ("submit", "button", "image") and (tipo not in ("checkbox", "radio") or "checked" in a):
+                f["campos"][nome] = a.get("value", "on" if tipo == "checkbox" else "")
+        elif tag == "textarea" and nome:
+            self._area, f["campos"][nome] = nome, ""
+        elif tag == "select" and nome:
+            self._select = nome
+        elif tag == "option" and self._select and (self._select not in f["campos"] or "selected" in a
+                                                   or (f["campos"][self._select] == "" and a.get("value"))):
+            f["campos"][self._select] = a.get("value", "")  # pula o "---------" vazio
+
+    def handle_data(self, data):
+        if self._area and self._atual is not None:
+            self._atual["campos"][self._area] += data
+
+    def handle_endtag(self, tag):
+        if tag == "textarea":
+            self._area = None
+        elif tag == "select":
+            self._select = None
+        elif tag == "form":
+            self._atual = None
+
+
+def ler_forms(html: str) -> list[dict]:
+    p = _Forms()
+    try:
+        p.feed(html)
+    except Exception:  # noqa: BLE001
+        pass
+    return p.forms
 
 
 class _Form(HTMLParser):
@@ -143,6 +214,12 @@ class _Form(HTMLParser):
             self._select = None
         elif tag == "form" and self.em_form:
             self.em_form = False
+
+
+def _form_de_conteudo(html: str, url: str) -> dict:
+    from .ataques_extra import forms_de_conteudo
+    forms = forms_de_conteudo(html, url, maximo=1)
+    return dict(forms[0]["campos"]) if forms else {}
 
 
 def ler_form(html: str) -> dict:
@@ -211,7 +288,7 @@ class Ataque:
             if not c["api"]:
                 r = self.a.pedir("GET", c["url"])
                 if r is not None and r.status == 200 and r.html:
-                    dados = ler_form(r.texto)
+                    dados = _form_de_conteudo(r.texto, c['url'])
             for campo in textos.get(c["modelo"], []):
                 dados[campo] = marca
             for campo in list(dados):
@@ -234,7 +311,7 @@ class Ataque:
             r = self.a.pedir("GET", c["url"])
             if r is None or r.status != 200 or not r.html:
                 continue
-            dados = ler_form(r.texto)
+            dados = _form_de_conteudo(r.texto, c['url'])
             dados.pop("csrfmiddlewaretoken", None)
             marca = f"ARGOS-CSRF-{j}-{self.R}"
             for campo in textos.get(c["modelo"], []):
@@ -351,7 +428,7 @@ class Ataque:
         r = visitante.pedir("GET", url)
         if r is None or r.status != 200:
             return
-        campos = ler_form(r.texto)
+        campos = _form_de_conteudo(r.texto, url)
         usuario = next((k for k in campos if re.search(r"(user|login|email)", k, re.I)), "username")
         senha = next((k for k in campos if re.search(r"(pass|senha)", k, re.I)), "password")
         dados = dict(campos)
@@ -458,12 +535,28 @@ class Ataque:
 
     # ---------------------------------------------------------------- tudo
     def rodar(self) -> list[Finding]:
-        # quem só lê vem antes de quem apaga (senão o XSS some junto com o post apagado)
-        for etapa in (self.vazamento_e_xss, self.refletido_e_injecao, self.login, self.idor_e_csrf, self.carga):
+        from . import ataques_extra as ex
+        etapas = [
+            # 1) só leem
+            self.vazamento_e_xss, lambda: ex.vazamento_privado(self), lambda: ex.websocket(self),
+            self.refletido_e_injecao, self.login,
+            # 2) criam coisas (B ainda é usuário comum)
+            lambda: ex.privilegio(self), lambda: ex.upload(self), lambda: ex.logica(self),
+            # 3) editam e APAGAM o que é do A
+            self.idor_e_csrf,
+            # 4) pode transformar o B em admin: por isso depois de tudo que precisa do B comum
+            lambda: ex.mass_assignment(self),
+            lambda: ex.mapa_lgpd(self),
+            self.carga,
+        ]
+        for etapa in etapas:
             progresso.checar()
             if not self.lab.vivo():
                 self.lab.reiniciar()
-            etapa()
+            try:
+                etapa()
+            except Exception as e:  # noqa: BLE001 - um ataque que quebra não derruba os outros
+                progresso.avisar(f"ataque: uma etapa falhou ({type(e).__name__}: {str(e)[:120]})", "erro")
         self.erros500 = {e for e in self.erros500
                          if e.split(" ", 1)[1].split("?")[0] not in self.quebra_sempre}
         if self.quebra_sempre:
