@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 
 from ..adapters.base import Adapter, Contexto
-from ..adapters.django_deploy import python_do_projeto
+from ..adapters.django_deploy import python_do_projeto, achar_manage
 from ..core import progresso
 from ..guard.ativo import confirmar_dono, AtaqueRecusado
 from ..schema import Finding
@@ -12,15 +12,37 @@ from .ataques import Ataque
 from .laboratorio import Laboratorio, LabFalhou
 
 
+def raiz_do_repositorio(pasta: str) -> str:
+    """Sobe a partir da pasta até achar o .git (projeto Django + Angular costuma ter o
+    backend numa subpasta e o .git na raiz)."""
+    atual = os.path.abspath(pasta)
+    while True:
+        if os.path.isdir(os.path.join(atual, ".git")):
+            return atual
+        pai = os.path.dirname(atual)
+        if pai == atual:
+            return os.path.abspath(pasta)  # sem .git: a trava recusa com a mensagem certa
+        atual = pai
+
+
 def atacar(projeto: str, carga_max: int = 512, sem_carga: bool = False, buscar_dono=None) -> list[Finding]:
-    raiz = os.path.abspath(projeto)
-    dono = confirmar_dono(raiz, buscar_dono)  # 1ª trava: repositório onde você é admin
+    pasta = os.path.abspath(projeto)
+    repo = raiz_do_repositorio(pasta)
+    dono = confirmar_dono(repo, buscar_dono)  # 1ª trava: repositório onde você é admin
     progresso.avisar(f"trava: GitHub confirmou que você administra {dono}", "ok")
-    if not os.path.isfile(os.path.join(raiz, "manage.py")):
-        raise AtaqueRecusado("o modo ataque, por enquanto, é pra projeto Django (manage.py na raiz da pasta)")
-    python = python_do_projeto(raiz, raiz)
+    manage = achar_manage(pasta, profundidade=4)
+    if not manage:
+        raise AtaqueRecusado("não achei o manage.py nessa pasta nem nas subpastas: o modo ataque, por "
+                             "enquanto, é pra projeto Django (o Angular não precisa subir: o ataque vai "
+                             "direto no backend, como faria um atacante de verdade)")
+    backend = os.path.dirname(manage)
+    if os.path.relpath(backend, repo).startswith(".."):
+        raise AtaqueRecusado("o manage.py está fora do repositório verificado")
+    if backend != pasta:
+        progresso.avisar(f"ataque: backend Django em {os.path.relpath(backend, pasta)}", "info")
+    python = python_do_projeto(repo, backend)
     # 2ª trava: o próprio Argos sobe o app em 127.0.0.1 e só ataca esse processo
-    with Laboratorio(raiz, python) as lab:
+    with Laboratorio(backend, python, repo=repo) as lab:
         return Ataque(lab, carga_max=carga_max, sem_carga=sem_carga).rodar()
 
 

@@ -132,7 +132,7 @@ VIEWS = {
 }
 
 
-def _mini_projeto(raiz, tipo):
+def _mini_projeto(raiz, tipo, subpasta=""):
     arquivos = {
         "manage.py": '''
             import os, sys
@@ -171,7 +171,7 @@ def _mini_projeto(raiz, tipo):
         "notas/views.py": VIEWS[tipo],
     }
     for nome, conteudo in arquivos.items():
-        caminho = raiz / nome
+        caminho = raiz / subpasta / nome if subpasta else raiz / nome
         caminho.parent.mkdir(parents=True, exist_ok=True)
         caminho.write_text(textwrap.dedent(conteudo), encoding="utf-8")
     _git(raiz)
@@ -192,3 +192,21 @@ def test_ataque_de_verdade(tmp_path, tipo):
     else:
         graves = [f for f in achados if f.severidade.value in ("critico", "alto", "medio")]
         assert graves == [], [f.titulo for f in graves]
+
+
+@pytest.mark.skipif(not tem_django, reason="Django não instalado neste Python")
+def test_django_mais_angular_backend_em_subpasta(tmp_path):
+    """Formato do tevejo: .git na raiz, front Angular numa pasta, Django em src/backend_django."""
+    _mini_projeto(tmp_path, "vulneravel", subpasta="src/backend_django")
+    (tmp_path / "frontend").mkdir()
+    (tmp_path / "frontend" / "package.json").write_text('{"dependencies": {"@angular/core": "^20"}}')
+    (tmp_path / ".env").write_text("CHAVE_DE_VERDADE=nao-pode-vazar\n")
+    achados = executar.atacar(str(tmp_path), sem_carga=True, buscar_dono=lambda d, r: {"admin": True})
+    assert ("CWE-639", "critico") in {(f.categoria, f.severidade.value) for f in achados}
+
+
+def test_raiz_do_repositorio_sobe_ate_o_git(tmp_path):
+    _git(tmp_path)
+    fundo = tmp_path / "src" / "backend_django"
+    fundo.mkdir(parents=True)
+    assert executar.raiz_do_repositorio(str(fundo)) == str(tmp_path)

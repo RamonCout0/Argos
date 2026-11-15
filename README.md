@@ -190,7 +190,7 @@ python cli.py atacar ../meu-projeto --carga-max 1024 --prompt-ia pra_ia.md
 
 **Validação:** no Gatuno de Estrelas, zero achado grave. Numa cópia com 7 brechas plantadas (IDOR de editar e de apagar, DM de outro, CSRF desligado, `|safe` em post, e-mail no card, login sem limite), o modo ataque confirmou as 7.
 
-Por enquanto é pra projeto **Django** (`manage.py` na raiz). O número do teste de carga é do servidor de desenvolvimento na tua máquina: serve pra comparar antes/depois, não é a capacidade de produção.
+Por enquanto é pra projeto **Django**. Não precisa rodar nada antes: o Argos sobe o app sozinho. Em projeto Django + Angular, aponte a pasta do projeto inteiro: ele acha o `manage.py` nas subpastas (ex.: `src/backend_django/`) e o `.git` subindo até a raiz. O Angular não precisa subir, porque o ataque vai direto no backend, como faria um atacante de verdade (o front não protege nada sozinho). O número do teste de carga é do servidor de desenvolvimento na tua máquina: serve pra comparar antes/depois, não é a capacidade de produção.
 
 ---
 

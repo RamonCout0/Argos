@@ -94,8 +94,9 @@ def porta_livre() -> int:
 
 
 class Laboratorio:
-    def __init__(self, projeto: str, python: str):
+    def __init__(self, projeto: str, python: str, repo: str | None = None):
         self.projeto = os.path.abspath(projeto)
+        self.repo = os.path.abspath(repo or projeto)
         self.python = python
         self.porta = porta_livre()
         self.base = f"http://127.0.0.1:{self.porta}"
@@ -106,7 +107,7 @@ class Laboratorio:
     # ------------------------------------------------------------ ambiente
     def _ambiente(self) -> dict:
         env = dict(os.environ)
-        for nome in chaves_do_env(self.projeto):  # .env do projeto: tudo em branco
+        for nome in set(chaves_do_env(self.projeto)) | set(chaves_do_env(self.repo)):  # .env: tudo em branco
             env[nome] = ""
         env.update({
             "DJANGO_SETTINGS_MODULE": "argos_lab_settings",
