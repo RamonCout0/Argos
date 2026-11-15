@@ -151,6 +151,11 @@ Pra ver funcionando: `python exemplos/web_inseguro.py` sobe um app errado de pro
 | Dado pessoal em HTTP sem TLS | tshark | vem com o Wireshark |
 | O que o navegador/Burp vê: arquivos expostos, CORS, cookies, cabeçalhos, **certificado e TLS** | trilha web | nada |
 | IA obedecendo prompt injection | teste de IA | Ollama |
+| **Possível IDOR**: view que edita/apaga pelo ID da URL sem conferir o dono (Django e DRF) | detector de permissões do Argos | nada |
+
+**Menos alarme falso (v2.3).** Código gerado (build do Angular, `*.min.js`, `staticfiles`) sai do relatório; achado em arquivo de teste é rebaixado (senha de teste vira INFO); o semgrep usa só as regras da stack do projeto e descarta regra de framework que você não usa; regra de "auditoria" ou de baixa confiança aparece como **(revisar)**, no máximo BAIXO, sem travar o selo.
+
+**Detector de IDOR.** Lê o código Python (sem executar) e procura a forma clássica: buscar o objeto pelo ID da URL e alterar sem olhar `request.user`. Segue os mixins e permissões do próprio projeto (um `DonoMixin` em outro arquivo conta como checagem), e só estar logado não conta como ser dono. Validado com mutação: tirando a checagem de dono de views reais, ele aponta; com a checagem, fica quieto.
 
 **`check --deploy` em dev x produção:** com o settings de desenvolvimento, quase todo aviso aparece (DEBUG=True é normal no teu PC). Por isso, nesse modo, os avisos ficam no máximo MÉDIO, com "(em produção)" no título, e não travam o selo. Pra checar o settings de produção de verdade, coloque `ARGOS_DJANGO_SETTINGS=core.settings.prod` (o teu módulo) no `.env` do Argos. Esse scanner executa o `settings.py` do teu projeto, por isso só roda em pasta local.
 
@@ -238,6 +243,7 @@ argos/
     dependencias.py    # v2.2: OSV-Scanner (todas as linguagens) + npm audit de reserva
     django_deploy.py   # v2.2: manage.py check --deploy com o venv do projeto
     trivy.py           # v2.2: Dockerfile / docker-compose
+    permissoes.py      # v2.3: possivel IDOR (editar/apagar sem conferir o dono)
     semgrep.py         # SAST poliglota (ponte WSL no Windows)
     bandit.py          # SAST so-Python (extra, nativo no Windows)
     prompt_injection.py # v2.0: teste da tua IA (vazamento, sobrescrita, injecao indireta)
@@ -253,6 +259,8 @@ argos/
     orchestrator.py    # roda os adapters disponiveis e junta os findings
     dedup.py           # funde a mesma brecha achada por scanners diferentes
     aceitos.py         # riscos aceitos: motivo + prazo, vencem sozinhos
+    progresso.py       # log ao vivo e cancelamento (mata ate os programas externos)
+    ruido.py           # v2.3: tira codigo gerado, rebaixa achado em arquivo de teste
   lenses/
     mapa.py            # regras fixas: severidade/CWE -> critico/lgpd/bot
     lgpd_manual.py     # checklist manual da LGPD (fora do score)
@@ -286,6 +294,7 @@ tests/                 # testes do nucleo e dos parsers
 - **Fase 6 — veredito e relatório (OK):** `auditar` roda as trilhas pedidas e junta tudo num selo só; relatório HTML offline (`--html`) e JSON pra CI (`--saida-json`); `--falhar-em medio|baixo` deixa o selo mais rigoroso (nunca mais frouxo); riscos aceitos com motivo e prazo de até 90 dias em `argos-aceitos.json`.
 - **v1.1 — interface gráfica** (Tkinter, hoje `gui --classico`).
 - **v2.0 — teste de IA e interface nova (OK):** trilha `ia` (prompt injection: vazamento, sobrescrita, injeção indireta) e interface pywebview com olho vetorial por estado.
+- **v2.3 — precisão (OK):** filtro de ruído (gerado, teste, framework ausente, regras de auditoria), detector de possível IDOR em Django/DRF, `check --deploy` com chave temporária quando o projeto exige `SECRET_KEY`, erro do semgrep legível.
 - **v2.2 — mais olhos (OK):** OSV-Scanner (dependências de todas as linguagens, com npm audit de reserva), `manage.py check --deploy` com o venv do projeto, gitleaks também no histórico do git, Trivy pra Dockerfile/docker-compose, certificado e versão do TLS na trilha web, e o relatório pra IA (`--prompt-ia` / Copiar pra IA).
 - **v2.1 — trilha web e configuração (OK):** `web <urls>` e `auditar --url` (o que Burp e scanners de diretório revelariam, só passivo) + checagem de configuração do Django/DRF/Angular/.env dentro do `scan`. Na interface: log ao vivo de cada passo (cada scanner, cada requisição, cada sondagem da IA), botão de cancelar que encerra até os programas externos, e um buraco negro que abre atrás do olho enquanto ele vasculha (canvas, respeita "reduzir movimento").
 - **Fase 7 — ideia: DAST com dono verificado.** Scanner web (ex.: OWASP ZAP) só em alvo local ou com verificação de dono. Em produção, apenas modo passivo (baseline: cabeçalhos, cookies, HTTPS); ataque ativo só em localhost/staging. Conferir a política de uso aceitável da hospedagem antes.

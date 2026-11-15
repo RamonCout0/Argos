@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from ..schema import Finding
 from ..lenses.mapa import enriquecer
 from .dedup import deduplicar
-from . import progresso
+from . import progresso, ruido
 from ..adapters.base import Adapter, Contexto
 from ..adapters.gitleaks import GitleaksAdapter
 from ..adapters.pip_audit import PipAuditAdapter
@@ -36,6 +36,7 @@ from ..adapters.config_projeto import ConfigAdapter
 from ..adapters.dependencias import OsvAdapter, NpmAuditAdapter
 from ..adapters.django_deploy import DjangoDeployAdapter
 from ..adapters.trivy import TrivyAdapter
+from ..adapters.permissoes import PermissoesAdapter
 # from ..adapters.bandit import BanditAdapter  # extra: SAST so-Python nativo no Windows
 
 # Trilha 1 — codigo
@@ -48,6 +49,7 @@ ADAPTERS: list[Adapter] = [
     NpmAuditAdapter(),   # reserva pro package-lock quando o OSV nao esta instalado (v2.2)
     DjangoDeployAdapter(),  # manage.py check --deploy, com o venv do projeto (v2.2)
     TrivyAdapter(),      # Dockerfile / docker-compose (v2.2)
+    PermissoesAdapter(),  # possivel IDOR: editar/apagar o que e de outro (v2.3)
     # BanditAdapter(),   # descomente p/ uma 2a passada so-Python (sobrepoe o semgrep)
 ]
 
@@ -79,6 +81,7 @@ class Resultado:
     rodaram: list[str] = field(default_factory=list)
     pulados: list[tuple[str, str]] = field(default_factory=list)  # (nome, motivo)
     fundidos: int = 0  # quantos achados repetidos entre scanners foram fundidos
+    ignorados_gerados: int = 0  # achados em codigo gerado/minificado, fora do relatorio (v2.3)
 
 
 def _rodar(adapters: list[Adapter], ctx: Contexto) -> Resultado:
@@ -99,6 +102,14 @@ def _rodar(adapters: list[Adapter], ctx: Contexto) -> Resultado:
         except Exception as e:  # um scanner que quebra nao derruba o scan todo
             res.pulados.append((ad.nome, f"erro: {e}"))
             progresso.avisar(f"{ad.nome}: erro — {str(e)[:160]}", "erro")
+
+    # corta o ruido: codigo gerado sai, achado em arquivo de teste e rebaixado (v2.3)
+    res.findings, gerados, rebaixados = ruido.filtrar(res.findings)
+    if gerados:
+        progresso.avisar(f"ruído: {gerados} achado(s) em código gerado/minificado ignorados", "info")
+    if rebaixados:
+        progresso.avisar(f"ruído: {rebaixados} achado(s) em arquivo de teste rebaixados", "info")
+    res.ignorados_gerados = gerados
 
     # pos-processamento deterministico: lentes primeiro, depois funde repetidos
     antes = len(res.findings)
@@ -150,6 +161,7 @@ def auditar(pasta: str | None = None, nativo: dict | None = None,
         res.rodaram.extend(f"{trilha}:{n}" for n in r.rodaram)
         res.pulados.extend((f"{trilha}:{n}", m) for n, m in r.pulados)
         res.fundidos += r.fundidos
+        res.ignorados_gerados += r.ignorados_gerados
     antes = len(res.findings)
     res.findings = deduplicar(res.findings)  # a mesma brecha pode aparecer em duas trilhas
     res.fundidos += antes - len(res.findings)

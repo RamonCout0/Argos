@@ -128,6 +128,7 @@ class DjangoDeployAdapter(Adapter):
         pasta = os.path.dirname(manage)
         py = python_do_projeto(raiz, pasta)
         ambiente = dict(os.environ)
+        ambiente["PYTHONUTF8"] = "1"  # no Windows, sem isso o Python lê arquivo em cp1252
         settings = carregar("ARGOS_DJANGO_SETTINGS", "")
         if settings:
             ambiente["DJANGO_SETTINGS_MODULE"] = settings
@@ -136,6 +137,15 @@ class DjangoDeployAdapter(Adapter):
                          + (f" · settings {settings}" if settings else " · settings de dev"), "info")
         proc = progresso.rodar([py, "manage.py", "check", "--deploy"], timeout=180, cwd=pasta, env=ambiente)
         texto = (proc.stdout or "") + "\n" + (proc.stderr or "")
+        if proc.returncode != 0 and "ImproperlyConfigured" in texto and "SECRET_KEY" in texto:
+            # projeto bem feito: recusa subir sem SECRET_KEY de verdade. Pro check, uma chave
+            # temporária forte (só nesse processo; nada é gravado no projeto).
+            import secrets as _s
+            temporaria = _s.token_urlsafe(50)
+            ambiente.update({"SECRET_KEY": temporaria, "DJANGO_SECRET_KEY": temporaria})
+            progresso.avisar("django-check: o projeto exige SECRET_KEY; tentando com uma chave temporária", "info")
+            proc = progresso.rodar([py, "manage.py", "check", "--deploy"], timeout=180, cwd=pasta, env=ambiente)
+            texto = (proc.stdout or "") + "\n" + (proc.stderr or "")
         if "No module named 'django'" in texto:
             raise RuntimeError("não achei o Django no Python do projeto: crie o venv dele "
                                "(venv/.venv na pasta do projeto) e instale as dependências")

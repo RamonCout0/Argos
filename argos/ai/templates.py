@@ -212,3 +212,9 @@ def explicacao_base(categoria: str) -> tuple[str, str]:  # noqa: F811 - amplia a
     if cat.startswith("TRIVY-"):
         return DOCKER
     return _explicacao_base_antiga(categoria)
+
+
+TEMPLATES["CWE-639"] = (
+    "Trocando o ID na URL, um usuário pode conseguir editar ou apagar o que é de outro (IDOR).",
+    "Filtrar o objeto pelo usuário logado ou conferir o dono antes de alterar; testar com um segundo usuário.",
+)

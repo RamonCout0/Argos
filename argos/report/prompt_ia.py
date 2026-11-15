@@ -50,7 +50,10 @@ Siga estas regras:
    de propor a mudança.
 6. **Segurança no backend.** Validação e permissão ficam no servidor (Django/DRF), nunca
    só no front: tudo que está no Angular/navegador é público.
-7. **No fim, me devolva:**
+7. **"(revisar)" não é brecha confirmada.** São pontos que o scanner pediu pra olhar (regra de
+   auditoria, possível IDOR). Leia o código: se já estiver seguro, não mude nada e me diga por
+   quê; se for real, corrija e escreva um teste que prove (ex.: outro usuário recebe 403).
+8. **No fim, me devolva:**
    - as mudanças, arquivo por arquivo, em diff ou trechos completos;
    - uma lista do que eu preciso fazer à mão (trocar chaves, decisões);
    - o que você não corrigiu e por quê.
