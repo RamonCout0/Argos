@@ -51,13 +51,23 @@ def repositorio_github(pasta: str) -> tuple[str, str]:
     return m.group(1), m.group(2)
 
 
+_ULTIMO_ERRO: list[str] = []
+
+
 def _permissoes_via_gh(dono: str, repo: str) -> dict | None:
-    gh = shutil.which("gh")
+    from ..adapters.base import achar_programa
+    gh = achar_programa("gh")  # PATH, e também onde o winget instala (sem precisar reabrir o terminal)
     if not gh:
+        _ULTIMO_ERRO.append("o GitHub CLI (gh) não foi encontrado")
         return None
-    r = subprocess.run([gh, "api", f"repos/{dono}/{repo}", "--jq", ".permissions"],
-                       capture_output=True, text=True, timeout=30)
+    try:
+        r = subprocess.run([gh, "api", f"repos/{dono}/{repo}", "--jq", ".permissions"],
+                           capture_output=True, text=True, timeout=30, encoding="utf-8", errors="replace")
+    except (OSError, subprocess.TimeoutExpired) as e:
+        _ULTIMO_ERRO.append(f"o gh não respondeu ({e})")
+        return None
     if r.returncode != 0:
+        _ULTIMO_ERRO.append("gh: " + ((r.stderr or r.stdout or "").strip().splitlines() or ["erro"])[-1][:160])
         return None
     try:
         return json.loads(r.stdout or "null")
@@ -110,10 +120,12 @@ def confirmar_dono(pasta: str, buscar=None) -> str:
     dono, repo = repositorio_github(pasta)
     buscar = buscar or (lambda d, r: _execucao_do_actions(d, r) or _permissoes_via_gh(d, r)
                         or _permissoes_via_token(d, r))
+    _ULTIMO_ERRO.clear()
     perms = buscar(dono, repo)
     if perms is None:
+        motivo = f" Motivo: {_ULTIMO_ERRO[-1]}." if _ULTIMO_ERRO else ""
         raise AtaqueRecusado(
-            f"não consegui perguntar ao GitHub se você administra {dono}/{repo}. Instale o GitHub CLI "
+            f"não consegui perguntar ao GitHub se você administra {dono}/{repo}.{motivo} Instale o GitHub CLI "
             "e faça login (winget install GitHub.cli e depois gh auth login) ou defina GITHUB_TOKEN.")
     if not perms.get("admin"):
         raise AtaqueRecusado(f"o GitHub diz que você NÃO é administrador de {dono}/{repo}. "

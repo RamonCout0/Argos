@@ -50,6 +50,11 @@ def achar_programa(nome: str) -> Optional[str]:
                   os.path.join(os.environ.get("ProgramData", "C:/ProgramData"), "chocolatey", "bin", exe),
                   os.path.join(casa, "scoop", "shims", exe),
                   os.path.join(casa, "go", "bin", exe)]
+    # instaladores que vão pra "Arquivos de Programas" (ex.: winget install GitHub.cli -> GitHub CLI\gh.exe)
+    for pf in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)"),
+               os.path.join(local, "Programs") if local else None):
+        if pf:
+            candidatos += glob.glob(os.path.join(pf, "*", exe)) + glob.glob(os.path.join(pf, "*", "bin", exe))
     candidatos += glob.glob(os.path.join(local, "Microsoft", "WinGet", "Packages", f"*{nome[1:]}*", "**", exe),
                             recursive=True)
     return next((c for c in candidatos if c and os.path.isfile(c)), None)

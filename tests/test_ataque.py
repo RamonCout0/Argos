@@ -210,3 +210,14 @@ def test_raiz_do_repositorio_sobe_ate_o_git(tmp_path):
     fundo = tmp_path / "src" / "backend_django"
     fundo.mkdir(parents=True)
     assert executar.raiz_do_repositorio(str(fundo)) == str(tmp_path)
+
+
+def test_erro_do_gh_aparece_na_mensagem(tmp_path, monkeypatch):
+    _git(tmp_path)
+    from argos.adapters import base
+    monkeypatch.setattr(base, "achar_programa", lambda nome: None)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    with pytest.raises(AtaqueRecusado, match="não foi encontrado"):
+        confirmar_dono(str(tmp_path))
