@@ -21,7 +21,7 @@ from typing import Optional
 
 from ..core import progresso
 from ..schema import Finding, FixTipo, Severidade
-from .contexto import trecho_de
+from .contexto import mascarar, trecho_de
 from .templates import explicacao_base
 
 SISTEMA = (
@@ -70,8 +70,10 @@ def _limpar(resposta: dict) -> tuple[str, str]:
         return "", ""
     exp = resposta.get("explicacao")
     cor = resposta.get("correcao")
-    exp = exp.strip()[:LIMITE_TEXTO] if isinstance(exp, str) else ""
-    cor = cor.strip()[:LIMITE_TEXTO] if isinstance(cor, str) else ""
+    # a IA costuma repetir o trecho na resposta; mascara antes de cachear/exibir,
+    # senao o segredo cru vaza pro .argos_cache e pro relatorio (bug real v3.1)
+    exp = mascarar(exp.strip()[:LIMITE_TEXTO]) if isinstance(exp, str) else ""
+    cor = mascarar(cor.strip()[:LIMITE_TEXTO]) if isinstance(cor, str) else ""
     return exp, cor
 
 

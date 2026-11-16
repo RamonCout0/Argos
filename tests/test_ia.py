@@ -100,6 +100,16 @@ def test_maximo_prioriza_os_mais_graves():
     assert [f.id for f in fs if f.fonte_explicacao == "ia"] == ["CRIT"]
 
 
+def test_resposta_da_ia_com_segredo_e_mascarada(tmp_path):
+    # a IA ecoa o trecho de volta; o segredo nao pode vazar cru pro cache nem pro relatorio
+    cache = str(tmp_path / "ia.json")
+    f = _f("A")
+    resp = {"explicacao": "ok", "correcao": f'remova a linha: TOKEN = "{SEGREDO}"'}
+    narrar([f], ModeloFalso(resposta=resp), cache=cache)
+    assert SEGREDO not in f.sugestao_ia and "***" in f.sugestao_ia
+    assert SEGREDO not in open(cache, encoding="utf-8").read()
+
+
 def test_cache_evita_perguntar_de_novo(tmp_path):
     cache = str(tmp_path / "ia.json")
     narrar([_f("A")], ModeloFalso(), cache=cache)
