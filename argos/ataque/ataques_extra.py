@@ -309,7 +309,9 @@ def _conferir_uploads(atq):
                 except OSError:
                     continue
                 if n.lower().endswith(".svg") and b"<script" in inicio:
-                    vistos["svg"] = n
+                    # se o usuário comum também conseguiu, é isso que vale (mais grave)
+                    if vistos["svg"] is None or ("-comum" in n and "-comum" not in vistos["svg"]):
+                        vistos["svg"] = n
                 if b"<html" in inicio and b"argos-html" in inicio:
                     vistos["html"] = n
                 if tamanho >= 20 * 1024 * 1024:
