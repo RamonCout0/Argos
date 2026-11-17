@@ -15,9 +15,64 @@ Achados da trilha web/nativa (URL, porta) não passam por aqui.
 """
 from __future__ import annotations
 
+import fnmatch
+import os
 import re
 
 from ..schema import Finding, Severidade
+
+# pastas que o Argos NUNCA deve escanear, nem quando ele se audita a si mesmo:
+# o proprio cache de respostas da IA (pode conter trecho de codigo do alvo).
+_SEMPRE_IGNORAR = (".argos_cache",)
+_ARGOSIGNORE = ".argosignore"
+
+
+def ler_argosignore(raiz: str | None) -> list[str]:
+    """Padroes do arquivo .argosignore na raiz do projeto (estilo .gitignore,
+    simples: nome de pasta, caminho ou glob; '#' comenta). Sempre inclui o cache."""
+    padroes = list(_SEMPRE_IGNORAR)
+    if not raiz:
+        return padroes
+    caminho = os.path.join(raiz, _ARGOSIGNORE)
+    try:
+        with open(caminho, encoding="utf-8") as fp:
+            for linha in fp:
+                linha = linha.split("#", 1)[0].strip().replace("\\", "/").rstrip("/")
+                if linha:
+                    padroes.append(linha)
+    except OSError:
+        pass
+    return padroes
+
+
+def deve_ignorar(caminho: str, padroes: list[str]) -> bool:
+    """True se o caminho (relativo, com '/') casa com algum padrao do .argosignore."""
+    caminho = caminho.replace("\\", "/").strip("/")
+    segmentos = caminho.split("/")
+    for p in padroes:
+        if not p:
+            continue
+        # nome de pasta/arquivo solto casa em qualquer nivel (ex.: "exemplos", "*.pcap")
+        if "/" not in p and any(fnmatch.fnmatch(s, p) for s in segmentos):
+            return True
+        # caminho/prefixo a partir da raiz (ex.: "exemplos/projeto_vulneravel")
+        if fnmatch.fnmatch(caminho, p) or fnmatch.fnmatch(caminho, p + "/*"):
+            return True
+    return False
+
+
+def cortar_ignorados(findings: list[Finding], raiz: str | None) -> tuple[list[Finding], int]:
+    """Remove achados em caminhos listados no .argosignore (e no cache do Argos).
+    Devolve (achados que ficam, quantos sairam). URL/porta nunca saem por aqui."""
+    padroes = ler_argosignore(raiz)
+    ficam, cortados = [], 0
+    for f in findings:
+        caminho = _caminho(f)
+        if caminho is not None and deve_ignorar(caminho, padroes):
+            cortados += 1
+            continue
+        ficam.append(f)
+    return ficam, cortados
 
 # pastas de saída de build e cópias geradas
 _PASTAS_GERADAS = {"frontend_build", "dist", "build", "staticfiles", ".angular", "node_modules",

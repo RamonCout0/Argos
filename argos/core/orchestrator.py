@@ -103,6 +103,11 @@ def _rodar(adapters: list[Adapter], ctx: Contexto) -> Resultado:
             res.pulados.append((ad.nome, f"erro: {e}"))
             progresso.avisar(f"{ad.nome}: erro — {str(e)[:160]}", "erro")
 
+    # .argosignore: tira o que o dono marcou pra ignorar (e o cache do proprio Argos)
+    res.findings, ignorados = ruido.cortar_ignorados(res.findings, ctx.projeto)
+    if ignorados:
+        progresso.avisar(f".argosignore: {ignorados} achado(s) em caminho ignorado fora do relatório", "info")
+
     # corta o ruido: codigo gerado sai, achado em arquivo de teste e rebaixado (v2.3)
     res.findings, gerados, rebaixados = ruido.filtrar(res.findings)
     if gerados:

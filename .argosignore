@@ -1,0 +1,11 @@
+# Caminhos que o Argos ignora ao se auditar.
+# Formato estilo .gitignore (simples): nome de pasta, caminho ou glob; # comenta.
+
+# Fixtures propositalmente vulneraveis (projeto de exemplo, capturas de amostra):
+exemplos/
+
+# Suite de testes: tem "codigo perigoso" de proposito pra validar os scanners.
+tests/
+
+# Capturas de trafego de amostra em qualquer lugar:
+*.pcap
