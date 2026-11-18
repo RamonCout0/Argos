@@ -33,10 +33,26 @@ def test_recusa_origin_fora_do_github(tmp_path):
         confirmar_dono(str(tmp_path), buscar=lambda d, r: {"admin": True})
 
 
-def test_recusa_quem_nao_e_admin(tmp_path):
+def test_aceita_colaborador_com_escrita(tmp_path):
+    # colaborador de org (write, sem admin) é quem a ferramenta serve: libera
+    _git(tmp_path, "https://github.com/tads-cnat/tevejo.git")
+    assert confirmar_dono(str(tmp_path),
+                          buscar=lambda d, r: {"admin": False, "maintain": False, "push": True,
+                                               "triage": True, "pull": True}) == "tads-cnat/tevejo"
+
+
+def test_aceita_mantenedor(tmp_path):
     _git(tmp_path)
-    with pytest.raises(AtaqueRecusado, match="NÃO é administrador"):
-        confirmar_dono(str(tmp_path), buscar=lambda d, r: {"admin": False, "push": True})
+    assert confirmar_dono(str(tmp_path),
+                          buscar=lambda d, r: {"admin": False, "maintain": True, "push": False})
+
+
+def test_recusa_quem_so_tem_leitura(tmp_path):
+    # read/triage/sem-acesso continuam barrados — estranho não ataca projeto dos outros
+    _git(tmp_path)
+    with pytest.raises(AtaqueRecusado, match="escrita"):
+        confirmar_dono(str(tmp_path), buscar=lambda d, r: {"admin": False, "maintain": False,
+                                                           "push": False, "triage": True, "pull": True})
 
 
 def test_recusa_quando_nao_da_pra_perguntar_ao_github(tmp_path):

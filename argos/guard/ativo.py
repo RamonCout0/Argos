@@ -38,7 +38,7 @@ def repositorio_github(pasta: str) -> tuple[str, str]:
     """(dono, repositório) do `origin` da pasta. Recusa se não for git/GitHub."""
     if not os.path.isdir(os.path.join(pasta, ".git")):
         raise AtaqueRecusado(f"{pasta} não é a raiz de um repositório git. O modo ataque só roda "
-                             "em projeto versionado no GitHub, do qual você é administrador.")
+                             "em projeto versionado no GitHub, no qual você tem acesso de escrita.")
     git = shutil.which("git")
     if not git:
         raise AtaqueRecusado("git não encontrado: preciso dele pra conferir de quem é o repositório.")
@@ -52,6 +52,15 @@ def repositorio_github(pasta: str) -> tuple[str, str]:
 
 
 _ULTIMO_ERRO: list[str] = []
+
+# níveis do GitHub que contam como "colaborador deste projeto": escrita pra cima.
+# read/triage/sem-acesso NÃO passam — o estranho continua barrado.
+_NIVEIS_ESCRITA = ("admin", "maintain", "push")
+
+
+def _tem_escrita(perms: dict) -> bool:
+    """True se o GitHub diz que você tem push, é mantenedor ou admin do repo."""
+    return any(bool(perms.get(n)) for n in _NIVEIS_ESCRITA)
 
 
 def _permissoes_via_gh(dono: str, repo: str) -> dict | None:
@@ -115,8 +124,9 @@ def _execucao_do_actions(dono: str, repo: str) -> dict | None:
 
 
 def confirmar_dono(pasta: str, buscar=None) -> str:
-    """Devolve 'dono/repo' se o GitHub confirmar que você é ADMIN (ou que é o CI do próprio
-    repositório, provado pela API); senão, recusa."""
+    """Devolve 'dono/repo' se o GitHub confirmar que você tem ESCRITA no repositório — colaborador
+    de verdade do projeto (push, mantenedor ou admin) — ou que é o CI do próprio repositório,
+    provado pela API; senão, recusa."""
     dono, repo = repositorio_github(pasta)
     buscar = buscar or (lambda d, r: _execucao_do_actions(d, r) or _permissoes_via_gh(d, r)
                         or _permissoes_via_token(d, r))
@@ -125,11 +135,12 @@ def confirmar_dono(pasta: str, buscar=None) -> str:
     if perms is None:
         motivo = f" Motivo: {_ULTIMO_ERRO[-1]}." if _ULTIMO_ERRO else ""
         raise AtaqueRecusado(
-            f"não consegui perguntar ao GitHub se você administra {dono}/{repo}.{motivo} Instale o GitHub CLI "
-            "e faça login (winget install GitHub.cli e depois gh auth login) ou defina GITHUB_TOKEN.")
-    if not perms.get("admin"):
-        raise AtaqueRecusado(f"o GitHub diz que você NÃO é administrador de {dono}/{repo}. "
-                             "O modo ataque só roda em repositório seu.")
+            f"não consegui perguntar ao GitHub qual é a sua permissão em {dono}/{repo}.{motivo} Instale o "
+            "GitHub CLI e faça login (winget install GitHub.cli e depois gh auth login) ou defina GITHUB_TOKEN.")
+    if not _tem_escrita(perms):
+        raise AtaqueRecusado(f"o GitHub diz que você NÃO tem acesso de escrita em {dono}/{repo}. "
+                             "O modo ataque só roda em projeto do qual você é colaborador "
+                             "(push, mantenedor ou admin).")
     return f"{dono}/{repo}"
 
 
