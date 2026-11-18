@@ -48,4 +48,8 @@ def main(demo=None) -> None:
     import webview
 
     criar(webview, demo)
-    webview.start()
+    icone = str(WEB / "favicon.ico")
+    try:  # pywebview recente aceita icon; versao antiga nao tem o parametro (TypeError)
+        webview.start(icon=icone)
+    except TypeError:
+        webview.start()

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="iris" cx="46%" cy="40%" r="62%">
+      <stop offset="0%" stop-color="#b8e8ff"/>
+      <stop offset="38%" stop-color="#4aa3ff"/>
+      <stop offset="78%" stop-color="#2d5bd8"/>
+      <stop offset="100%" stop-color="#17205c"/>
+    </radialGradient>
+    <radialGradient id="fundo" cx="50%" cy="38%" r="70%">
+      <stop offset="0%" stop-color="#121a33"/>
+      <stop offset="100%" stop-color="#06080e"/>
+    </radialGradient>
+    <radialGradient id="brilho" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8fd4ff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#8fd4ff" stop-opacity="0"/>
+    </radialGradient>
+    <!-- amendoa estreita, puxada no canto externo (direita, mais alta) -->
+    <clipPath id="recorte">
+      <path d="M6 38 C 22 20, 44 15, 60 23 C 46 36, 24 42, 6 38 Z"/>
+    </clipPath>
+  </defs>
+
+  <rect width="64" height="64" rx="15" fill="url(#fundo)"/>
+  <circle cx="33" cy="30" r="22" fill="url(#brilho)"/>
+
+  <path d="M6 38 C 22 20, 44 15, 60 23 C 46 36, 24 42, 6 38 Z" fill="#070b16"/>
+
+  <g clip-path="url(#recorte)">
+    <!-- iris acompanha a inclinacao do olho -->
+    <circle cx="35" cy="28" r="13" fill="url(#iris)"/>
+    <g stroke="#bfe4ff" stroke-width="0.7" opacity="0.32">
+      <line x1="35" y1="28" x2="35" y2="16"/>
+      <line x1="35" y1="28" x2="45" y2="22"/>
+      <line x1="35" y1="28" x2="47" y2="30"/>
+      <line x1="35" y1="28" x2="43" y2="37"/>
+      <line x1="35" y1="28" x2="26" y2="37"/>
+      <line x1="35" y1="28" x2="23" y2="29"/>
+      <line x1="35" y1="28" x2="26" y2="20"/>
+    </g>
+    <circle cx="35" cy="28" r="5.6" fill="#04060c"/>
+    <circle cx="35" cy="28" r="13" fill="none" stroke="#0c1335" stroke-width="1.3"/>
+    <circle cx="30.5" cy="23.5" r="2.5" fill="#eaf6ff"/>
+    <circle cx="39" cy="32" r="1.1" fill="#cfeaff" opacity="0.85"/>
+  </g>
+
+  <!-- contorno, com o traço de cima mais marcado (delineado) -->
+  <path d="M6 38 C 22 20, 44 15, 60 23" fill="none" stroke="#9fdcff" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M60 23 C 46 36, 24 42, 6 38" fill="none" stroke="#6fb6e8" stroke-width="1.9" stroke-linecap="round"/>
+  <!-- asinha puxada pra cima no canto externo -->
+  <path d="M60 23 q 3 -2 5 -5" fill="none" stroke="#9fdcff" stroke-width="2.3" stroke-linecap="round"/>
+</svg>
