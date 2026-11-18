@@ -25,6 +25,7 @@ from ..core import aceitos as mod_aceitos
 from ..core import orchestrator as orq
 from ..core import progresso
 from .. import didatica
+from .. import mapa
 from ..ai.narrator import narrar
 from ..ai.ollama import Ollama, MODELO_PADRAO
 from ..report.html import render_html
@@ -74,6 +75,7 @@ class ApiArgos:
             "verificacao": f.verificacao, "conta": conta,
             "feito": conta and est.marcado(self._estado, chave, fp),
             "didatica": didatica.para_dict(f),
+            "area": mapa.area_de(f.local),
         }
 
     def _lgpd(self, chave: str) -> list[dict]:
@@ -94,6 +96,7 @@ class ApiArgos:
             "placar": {"score": p.score, "aprovado": p.aprovado, "bloqueantes": len(p.bloqueantes),
                        "por_severidade": p.por_severidade, "feitos": feitos, "total": total},
             "findings": [self._f(f, chave) for f in visiveis],
+            "mapa": mapa.construir(fs),
             "aceitos": [{"titulo": f.titulo, "justificativa": f.justificativa,
                          "sev": f.severidade.value} for f in p.riscos_aceitos],
             "lgpd": self._lgpd(chave),

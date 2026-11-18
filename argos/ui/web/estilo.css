@@ -548,3 +548,26 @@ body.com-console.console-baixo .toasts { bottom: 80px; }
 .didatica-links a { font-size: 12px; color: #bfe0ff; text-decoration: none;
   padding: 5px 10px; border-radius: 8px; background: rgba(60,120,220,.12); border: 1px solid rgba(143,212,255,.22); }
 .didatica-links a:hover { background: rgba(60,120,220,.24); border-color: var(--brilho); }
+
+/* ---------- Mapa de falhas ---------- */
+.mapa-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.mapa-tile { position: relative; padding: 14px; border-radius: 12px; cursor: pointer;
+  background: rgba(255,255,255,.03); border: 1px solid rgba(143,212,255,.14);
+  overflow: hidden; transition: transform .15s, border-color .2s; }
+.mapa-tile::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  opacity: calc(.12 + var(--calor, 0) * .55); background: var(--heat, #8fd4ff);
+  -webkit-mask: linear-gradient(180deg, transparent, #000); mask: linear-gradient(180deg, transparent, #000); }
+.mapa-tile:hover { transform: translateY(-2px); border-color: var(--brilho); }
+.mapa-tile.s-critico { --heat: #ff5d7a; } .mapa-tile.s-alto { --heat: #ff9a5a; }
+.mapa-tile.s-medio { --heat: #ffd27a; } .mapa-tile.s-baixo { --heat: #8fd4ff; } .mapa-tile.s-info { --heat: #6b7590; }
+.mapa-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; position: relative; }
+.mapa-topo b { font-size: 14px; word-break: break-word; }
+.mapa-n { font-size: 20px; font-weight: 800; }
+.mapa-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; position: relative; }
+.mapa-chip { font-size: 11px; padding: 2px 7px; border-radius: 6px; background: rgba(0,0,0,.28); }
+.mapa-chip.s-critico { color: #ff7a93; } .mapa-chip.s-alto { color: #ffa270; }
+.mapa-chip.s-medio { color: #ffd27a; } .mapa-chip.s-baixo { color: #bfe0ff; } .mapa-chip.s-info { color: var(--sub); }
+.mapa-ex { display: block; margin-top: 8px; color: var(--sub); font-size: 11px; line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+.mapa-banner { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 12px;
+  border-radius: 9px; background: rgba(60,120,220,.12); border: 1px solid rgba(143,212,255,.22); font-size: 13px; }

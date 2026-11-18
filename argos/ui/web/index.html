@@ -27,6 +27,10 @@
         <svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
         <span>Checklist</span><em class="badge" id="badge-brechas"></em>
       </button>
+      <button class="nav" data-view="mapa">
+        <svg viewBox="0 0 24 24"><path d="M9 3L3 5v16l6-2 6 2 6-2V3l-6 2-6-2z"/><path d="M9 3v16M15 5v16"/></svg>
+        <span>Mapa de falhas</span>
+      </button>
       <button class="nav" data-view="lgpd">
         <svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
         <span>LGPD</span>
@@ -119,6 +123,11 @@
     </section>
 
     <!-- ===================== CHECKLIST DE BRECHAS ===================== -->
+    <section class="view" id="view-mapa">
+      <header class="topo-view"><div><h2>Mapa de falhas</h2><p>Onde, no app, concentra mais brecha — bate o olho e vê a parte mais exposta.</p></div></header>
+      <div class="mapa-grade" id="mapa-grade"></div>
+    </section>
+
     <section class="view" id="view-brechas">
       <header class="topo-view">
         <div><h2>Checklist de brechas</h2><p>Marque o que já corrigiu. O re-scan é quem confirma.</p></div>

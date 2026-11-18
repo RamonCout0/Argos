@@ -201,9 +201,10 @@
 
   function filtrar(itens) {
     const f = app.filtro;
-    if (f === "todas") return itens;
-    if (f === "info") return itens.filter(x => x.sev === "info");
-    return itens.filter(x => x.lentes.indexOf(f) >= 0);
+    let r = app.mapaFiltro ? itens.filter(x => x.area === app.mapaFiltro) : itens;
+    if (f === "todas") return r;
+    if (f === "info") return r.filter(x => x.sev === "info");
+    return r.filter(x => x.lentes.indexOf(f) >= 0);
   }
 
   function item(f, conj, aoSelecionar) {
@@ -329,6 +330,14 @@
       vazioLista(caixa, "Nenhuma auditoria ainda", "Rode uma auditoria na aba Auditoria.");
       detalhe(det, null);
       return;
+    }
+    if (app.mapaFiltro) {
+      const b = el("div", "mapa-banner");
+      b.appendChild(el("span", null, "Área: " + app.mapaFiltro));
+      const x = el("button", "btn btn-mini", "✕ limpar");
+      x.addEventListener("click", () => { app.mapaFiltro = null; renderBrechas(); });
+      b.appendChild(x);
+      caixa.appendChild(b);
     }
     const itens = filtrar(p.findings);
     if (!itens.length) vazioLista(caixa, p.findings.length ? "Nada nesta lente" : "Nenhuma brecha encontrada",
@@ -642,10 +651,46 @@
   function renderTudo() {
     renderPlacar();
     renderResumo();
+    renderMapa();
     renderBrechas();
     renderLgpd();
     renderIA();
     renderScanners();
+  }
+
+  const SEV_ORDEM = ["critico", "alto", "medio", "baixo", "info"];
+
+  function renderMapa() {
+    const caixa = $("#mapa-grade");
+    if (!caixa) return;
+    caixa.textContent = "";
+    const p = app.conj.auditoria;
+    const mapa = p && p.mapa;
+    if (!mapa || !mapa.length) {
+      caixa.appendChild(el("p", "vazio", "Rode uma auditoria pra ver onde concentra mais falha."));
+      return;
+    }
+    const maxPeso = Math.max(...mapa.map(a => a.peso), 1);
+    mapa.forEach(a => {
+      const t = el("div", "mapa-tile s-" + a.max_sev);
+      t.style.setProperty("--calor", (a.peso / maxPeso).toFixed(3));
+      const topo = el("div", "mapa-topo");
+      topo.appendChild(el("b", null, a.area));
+      topo.appendChild(el("span", "mapa-n", String(a.total)));
+      t.appendChild(topo);
+      const chips = el("div", "mapa-chips");
+      SEV_ORDEM.forEach(s => {
+        const n = a.por_sev[s];
+        if (n) { const c = el("span", "mapa-chip s-" + s, n + "×"); chips.appendChild(c); }
+      });
+      t.appendChild(chips);
+      if (a.exemplos && a.exemplos.length) {
+        t.appendChild(el("small", "mapa-ex", a.exemplos.slice(0, 3).join(" · ")));
+      }
+      t.title = "Ver as brechas dessa área";
+      t.addEventListener("click", () => { app.mapaFiltro = a.area; trocarView("brechas"); renderBrechas(); });
+      caixa.appendChild(t);
+    });
   }
 
   function abrirAceitar(f, conj) {
@@ -676,6 +721,7 @@
     $$(".nav").forEach(b => b.addEventListener("click", () => trocarView(b.dataset.view)));
     $$("#filtros .chip").forEach(b => b.addEventListener("click", () => {
       app.filtro = b.dataset.filtro;
+      app.mapaFiltro = null;
       $$("#filtros .chip").forEach(x => x.classList.toggle("ativo", x === b));
       renderBrechas();
     }));
