@@ -391,3 +391,91 @@ body.com-console.console-baixo .toasts { bottom: 80px; }
 .spark { width: 120px; height: 36px; flex: none; }
 .spark polyline { fill: none; stroke: var(--acento); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .spark circle { fill: var(--acento-2); }
+
+/* ---------- Fase C: cena da ferramenta ativa no palco ---------- */
+.palco-ferramenta {
+  position: absolute; bottom: 2px; left: 50%; translate: -50% 0;
+  width: min(300px, 86%); z-index: 3; pointer-events: none;
+  opacity: 0; transform: translateY(10px) scale(.96);
+  transition: opacity .35s ease, transform .4s cubic-bezier(.3,1.4,.5,1);
+}
+.palco-ferramenta.ativa { opacity: 1; transform: none; }
+.cena-quadro { height: 96px; display: grid; place-items: center; }
+.cena-svg { width: 100%; height: 100%; }
+.cena-svg * { vector-effect: non-scaling-stroke; }
+.cena-svg [fill="none"], .cena-svg line, .cena-svg path:not([fill]) {
+  fill: none; stroke: var(--brilho, #8fd4ff); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.cena-svg rect, .cena-svg circle { fill: none; stroke: var(--brilho, #8fd4ff); stroke-width: 2; }
+.cena-rotulo {
+  display: flex; align-items: center; gap: 8px; justify-content: center;
+  font-size: 12px; color: var(--sub, #9aa6c4); margin-top: 2px; letter-spacing: .02em;
+}
+.cena-rotulo i { width: 7px; height: 7px; border-radius: 50%; background: var(--brilho, #8fd4ff);
+  box-shadow: 0 0 8px var(--brilho, #8fd4ff); animation: cena-pisca 1.1s ease-in-out infinite; }
+@keyframes cena-pisca { 50% { opacity: .25; } }
+
+/* segredos: lupa varrendo o documento, chave piscando */
+.cena-svg .lupa { transform: translate(60px, 52px); animation: lupa-vai 2.6s ease-in-out infinite; }
+@keyframes lupa-vai { 0%,100% { transform: translate(52px,46px); } 50% { transform: translate(118px,58px); } }
+.cena-svg .chave { stroke: #ff8aa0; animation: cena-pisca 1.3s ease-in-out infinite; }
+.cena-svg .chave circle, .cena-svg .chave rect { stroke: #ff8aa0; }
+
+/* código: feixe varrendo de cima a baixo */
+.cena-svg .feixe { fill: var(--brilho, #8fd4ff); stroke: none; opacity: .5;
+  filter: drop-shadow(0 0 6px var(--brilho,#8fd4ff)); animation: feixe-desce 2.2s ease-in-out infinite; }
+@keyframes feixe-desce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(78px); } }
+
+/* dependências: selo batendo; pacote ruim fica vermelho */
+.cena-svg .selo { stroke: #7CF29B; transform: translate(47px,81px); animation: selo-bate 1.8s ease-in-out infinite; }
+@keyframes selo-bate { 0%,30%,100% { transform: translate(47px,40px); opacity:0; } 45% { transform: translate(47px,81px); opacity:1; }
+  60% { transform: translate(93px,67px); opacity:1; } 80% { transform: translate(139px,81px); opacity:1; } }
+.cena-svg .pk.ruim rect, .cena-svg .pk.ruim path { stroke: #ff8aa0; animation: cena-pisca 1s ease-in-out infinite; }
+
+/* pacotes: fluem pelo fio até o funil; o sensível pisca vermelho */
+.cena-svg .pacote { animation: pacote-flui 2.4s linear infinite; }
+.cena-svg .pacote.p2 { animation-delay: .8s; } .cena-svg .pacote.p3 { animation-delay: 1.6s; }
+.cena-svg .pacote rect { fill: var(--brilho,#8fd4ff); stroke: none; }
+.cena-svg .pacote.sensivel rect { fill: #ff8aa0; }
+@keyframes pacote-flui { 0% { transform: translateX(0); opacity:0; } 10% { opacity:1; }
+  85% { transform: translateX(150px); opacity:1; } 100% { transform: translateX(150px); opacity:0; } }
+
+/* portas: radar girando, blip de porta aberta pisca */
+.cena-svg .varredura { fill: var(--brilho,#8fd4ff); stroke: none; opacity: .28; transform-origin: 110px 60px;
+  animation: radar-gira 2.4s linear infinite; }
+@keyframes radar-gira { to { transform: rotate(360deg); } }
+.cena-svg .blip { fill: var(--brilho,#8fd4ff); stroke: none; }
+.cena-svg .blip.aberta { fill: #ff8aa0; animation: cena-pisca .9s ease-in-out infinite; }
+
+/* web: header que falta pisca vermelho */
+.cena-svg .h { fill: var(--brilho,#8fd4ff); stroke: none; opacity:.8; }
+.cena-svg .h.falta { fill: #ff8aa0; animation: cena-pisca 1.1s ease-in-out infinite; }
+
+/* ataque: prédio treme, escudo falha, tiros voam */
+.palco-ferramenta.atacando .cena-rotulo i, .cena-svg .predio .escudo { stroke: #ff8aa0; }
+.cena-svg .predio { transform-origin: 111px 106px; animation: predio-treme .4s linear infinite; }
+@keyframes predio-treme { 0%,100%{transform:translate(0,0)} 25%{transform:translate(-1.5px,0)} 75%{transform:translate(1.5px,0)} }
+.cena-svg .escudo { opacity: 0; animation: escudo-pisca 1.3s ease-in-out infinite; }
+@keyframes escudo-pisca { 0%,70%,100%{opacity:0} 10%,30%{opacity:.7} }
+.cena-svg .jan { fill: var(--brilho,#8fd4ff); stroke:none; opacity:.35; }
+.cena-svg .jan.j2, .cena-svg .jan.j5 { fill:#ff8aa0; opacity:.8; animation: cena-pisca .8s ease-in-out infinite; }
+.cena-svg .tiro { fill:#ffd27a; stroke:none; filter: drop-shadow(0 0 5px #ffb04a); }
+.cena-svg .tiro.t1 { animation: tiro-voa 1.1s linear infinite; }
+.cena-svg .tiro.t2 { animation: tiro-voa 1.1s linear infinite .37s; }
+.cena-svg .tiro.t3 { animation: tiro-voa 1.1s linear infinite .74s; }
+@keyframes tiro-voa { 0%{transform:translate(206px,30px);opacity:0} 15%{opacity:1} 80%{transform:translate(126px,70px);opacity:1} 100%{transform:translate(120px,72px);opacity:0} }
+
+/* ia: injeção entra, cérebro pulsa */
+.cena-svg .cerebro { animation: cena-pulsa 1.8s ease-in-out infinite; transform-origin:110px 58px; }
+@keyframes cena-pulsa { 50%{transform:scale(1.05)} }
+.cena-svg .injecao rect { fill: #ff8aa0; stroke:none; animation: injeta 2.2s ease-in-out infinite; }
+@keyframes injeta { 0%{transform:translateX(0);opacity:.3} 60%{transform:translateX(60px);opacity:1} 100%{transform:translateX(60px);opacity:0} }
+
+/* genérico: anéis pulsando */
+.cena-svg .anel { opacity:.5; animation: cena-pulsa-anel 1.8s ease-in-out infinite; }
+.cena-svg .anel.a2 { animation-delay:.3s } .cena-svg .anel.a3 { animation-delay:.6s }
+@keyframes cena-pulsa-anel { 0%,100%{opacity:.15} 50%{opacity:.7} }
+
+@media (prefers-reduced-motion: reduce) {
+  .palco-ferramenta * { animation: none !important; }
+}

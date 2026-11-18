@@ -567,6 +567,17 @@
     ocupar("ia");
   }
 
+  // olha as linhas novas; quando um scanner "começa", troca a cena do palco pra ele
+  function cenaDoLog(linhas) {
+    if (!app.cena || !linhas) return;
+    for (let i = linhas.length - 1; i >= 0; i--) {
+      if (linhas[i].tipo === "inicio") {
+        app.cena.ativar(linhas[i].msg.split(":").slice(0, -1).join(":") || linhas[i].msg);
+        return;
+      }
+    }
+  }
+
   let sondando = false;
   async function sondar() {
     if (!app.ocupado || sondando) return;
@@ -576,12 +587,14 @@
     if (!s) return;
     if (typeof s.pos === "number") {
       consoleLinhas(s.log);
+      cenaDoLog(s.log);
       app.log.pos = s.pos;
     }
     consoleTique(s.cancelando);
     if (s.ocupado) return;
     const nome = app.ocupado;
     ocupar(null);
+    if (app.cena) app.cena.ocioso();
     const anterior = app.conj[s.conj || nome];
     if (s.cancelado) {
       consoleFim("cancelado");
@@ -688,6 +701,7 @@
 
   async function iniciar() {
     app.vigia = new ArgosOlho.Vigia($("#palco"), { enxame: 16 });
+    app.cena = ArgosFerramentas.montar($("#palco"));
     const logo = new ArgosOlho.Olho($("#olho-logo"));
     app.vigia.acompanhar(logo);
     ligar();
