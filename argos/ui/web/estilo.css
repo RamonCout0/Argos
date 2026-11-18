@@ -451,19 +451,35 @@ body.com-console.console-baixo .toasts { bottom: 80px; }
 .cena-svg .h { fill: var(--brilho,#8fd4ff); stroke: none; opacity:.8; }
 .cena-svg .h.falta { fill: #ff8aa0; animation: cena-pisca 1.1s ease-in-out infinite; }
 
-/* ataque: prédio treme, escudo falha, tiros voam */
-.palco-ferramenta.atacando .cena-rotulo i, .cena-svg .predio .escudo { stroke: #ff8aa0; }
-.cena-svg .predio { transform-origin: 111px 106px; animation: predio-treme .4s linear infinite; }
-@keyframes predio-treme { 0%,100%{transform:translate(0,0)} 25%{transform:translate(-1.5px,0)} 75%{transform:translate(1.5px,0)} }
-.cena-svg .escudo { opacity: 0; animation: escudo-pisca 1.3s ease-in-out infinite; }
-@keyframes escudo-pisca { 0%,70%,100%{opacity:0} 10%,30%{opacity:.7} }
-.cena-svg .jan { fill: var(--brilho,#8fd4ff); stroke:none; opacity:.35; }
-.cena-svg .jan.j2, .cena-svg .jan.j5 { fill:#ff8aa0; opacity:.8; animation: cena-pisca .8s ease-in-out infinite; }
-.cena-svg .tiro { fill:#ffd27a; stroke:none; filter: drop-shadow(0 0 5px #ffb04a); }
-.cena-svg .tiro.t1 { animation: tiro-voa 1.1s linear infinite; }
-.cena-svg .tiro.t2 { animation: tiro-voa 1.1s linear infinite .37s; }
-.cena-svg .tiro.t3 { animation: tiro-voa 1.1s linear infinite .74s; }
-@keyframes tiro-voa { 0%{transform:translate(206px,30px);opacity:0} 15%{opacity:1} 80%{transform:translate(126px,70px);opacity:1} 100%{transform:translate(120px,72px);opacity:0} }
+/* ataque: míssil faz o arco (∩) até o prédio, várias vezes; impactos e tremor */
+.palco-ferramenta.atacando .cena-rotulo i { background:#ffd27a; box-shadow:0 0 8px #ffb04a; }
+.cena-ataque .lancador rect, .cena-ataque .lancador path { stroke: var(--brilho,#8fd4ff); }
+.cena-ataque .trilha { fill:none; stroke:rgba(255,210,122,.3); stroke-width:1.6; stroke-dasharray:3 6; }
+.cena-ataque .predio { transform-origin:173px 107px; animation: predio-treme .26s linear infinite; }
+@keyframes predio-treme { 0%,100%{transform:translate(0,0)} 25%{transform:translate(-1.6px,.4px)} 75%{transform:translate(1.6px,0)} }
+.cena-ataque .predio rect { stroke: var(--brilho,#8fd4ff); }
+.cena-ataque .escudo { opacity:0; animation: escudo-pisca 1.35s ease-in-out infinite; }
+@keyframes escudo-pisca { 0%,72%,100%{opacity:0} 6%,26%{opacity:.75} }
+.cena-ataque .escudo { stroke:#ff8aa0 !important; }
+.cena-ataque .jan { fill: var(--brilho,#8fd4ff); stroke:none; opacity:.4; }
+.cena-ataque .jan.j1, .cena-ataque .jan.j4 { fill:#ff8aa0; opacity:.85; animation: cena-pisca .7s ease-in-out infinite; }
+
+.cena-ataque .missil { offset-rotate: auto; }
+.cena-ataque .missil .corpo { stroke:#ffd27a; stroke-width:2.4; }
+.cena-ataque .missil .ponta { fill:#ffe6a6; stroke:none; }
+.cena-ataque .missil .rastro { stroke:#ffb04a; stroke-width:2.4; opacity:.5; filter:drop-shadow(0 0 4px #ffb04a); }
+.cena-ataque .missil.m1 { offset-path: path("M32 99 Q 112 -30 173 66"); animation: missil-voo 1.35s cubic-bezier(.5,.05,.7,.5) infinite; }
+.cena-ataque .missil.m2 { offset-path: path("M32 99 Q 112 -30 173 66"); animation: missil-voo 1.35s cubic-bezier(.5,.05,.7,.5) infinite .45s; }
+.cena-ataque .missil.m3 { offset-path: path("M32 99 Q 112 -30 173 66"); animation: missil-voo 1.35s cubic-bezier(.5,.05,.7,.5) infinite .9s; }
+@keyframes missil-voo { 0%{offset-distance:0%;opacity:0} 7%{opacity:1} 93%{offset-distance:100%;opacity:1} 100%{offset-distance:100%;opacity:0} }
+
+.cena-ataque .impacto circle { fill:#ffe6a6; stroke:none; }
+.cena-ataque .impacto .estilhaco { stroke:#ffd27a; stroke-width:2; filter:drop-shadow(0 0 5px #ffb04a); }
+.cena-ataque .impacto { opacity:0; animation: impacto-bum .45s ease-out infinite 1.17s; }
+@keyframes impacto-bum {
+  0%{opacity:0; transform:translate(173px,66px) scale(0)}
+  30%{opacity:1; transform:translate(173px,66px) scale(1.15)}
+  100%{opacity:0; transform:translate(173px,66px) scale(1.7)} }
 
 /* ia: injeção entra, cérebro pulsa */
 .cena-svg .cerebro { animation: cena-pulsa 1.8s ease-in-out infinite; transform-origin:110px 58px; }
@@ -479,3 +495,40 @@ body.com-console.console-baixo .toasts { bottom: 80px; }
 @media (prefers-reduced-motion: reduce) {
   .palco-ferramenta * { animation: none !important; }
 }
+
+/* ---------- Fase C: glow + ferramentas orbitando o olho ---------- */
+.palco-glow {
+  position: absolute; left: 50%; top: 46%; translate: -50% -50%;
+  width: 300px; height: 300px; border-radius: 50%; z-index: 0; pointer-events: none;
+  background: radial-gradient(circle, var(--brilho, #8fd4ff) 0%, transparent 62%);
+  opacity: 0; filter: blur(10px); transition: opacity .6s ease;
+}
+.palco[data-estado="vigiando"] .palco-glow { opacity: .22; animation: glow-pulsa 2.6s ease-in-out infinite; }
+.palco[data-estado="alerta"] .palco-glow { opacity: .2; background: radial-gradient(circle, #ff8aa0 0%, transparent 62%); }
+@keyframes glow-pulsa { 50% { opacity: .1; } }
+
+.palco-orbita {
+  position: absolute; left: 50%; top: 46%; width: 0; height: 0; z-index: 2; pointer-events: none;
+  opacity: 0; transform: scale(.55); transition: opacity .5s ease, transform .6s cubic-bezier(.3,1.4,.5,1);
+}
+.palco[data-estado="vigiando"] .palco-orbita { opacity: 1; transform: none; }
+.orbita-anel { position: absolute; left: 0; top: 0; animation: orbita-gira 20s linear infinite; }
+@keyframes orbita-gira { to { transform: rotate(360deg); } }
+.orbe { position: absolute; left: 0; top: 0; transform: rotate(var(--a)) translate(136px); }
+.anti { transform: rotate(calc(-1 * var(--a))); }
+.orbe .ico {
+  display: grid; place-items: center; width: 30px; height: 30px; margin: -15px; border-radius: 9px;
+  background: rgba(12, 18, 38, .72); border: 1px solid rgba(143, 212, 255, .22); color: var(--sub, #9aa6c4);
+  animation: orbita-contra 20s linear infinite; transition: color .3s, border-color .3s, box-shadow .3s, background .3s;
+}
+@keyframes orbita-contra { to { transform: rotate(-360deg); } }
+.orbe .ico svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.orbe.on .ico { color: #fff; border-color: var(--brilho, #8fd4ff);
+  background: rgba(30, 45, 80, .92); box-shadow: 0 0 14px var(--brilho, #8fd4ff); }
+.orbe.on { animation: orbe-salta 1s ease-in-out infinite; }
+@keyframes orbe-salta { 50% { transform: rotate(var(--a)) translate(146px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .orbita-anel, .orbe .ico, .orbe.on, .palco-glow { animation: none !important; }
+}
+@media (max-width: 760px) { .orbe { transform: rotate(var(--a)) translate(112px); } }

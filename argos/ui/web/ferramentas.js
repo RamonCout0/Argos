@@ -97,16 +97,24 @@
       </svg>`,
     ataque: `
       <svg viewBox="0 0 220 120" class="cena-svg cena-ataque" aria-hidden="true">
-        <line x1="20" y1="106" x2="200" y2="106" class="chao"/>
+        <line x1="12" y1="107" x2="208" y2="107" class="chao"/>
+        <!-- lançador (atacante) -->
+        <g class="lancador"><rect x="14" y="94" width="28" height="13" rx="2"/><path d="M34 94 l7 -9"/></g>
+        <!-- alvo -->
         <g class="predio">
-          <rect x="84" y="40" width="54" height="66" rx="3"/>
-          ${Array.from({ length: 9 }, (_, i) =>
-            `<rect class="jan j${i}" x="${92 + (i % 3) * 15}" y="${48 + Math.floor(i / 3) * 16}" width="9" height="9" rx="1.5"/>`).join("")}
-          <rect class="escudo" x="80" y="36" width="62" height="74" rx="6"/>
+          <rect x="150" y="58" width="46" height="49" rx="3"/>
+          ${Array.from({ length: 6 }, (_, i) =>
+            `<rect class="jan j${i}" x="${157 + (i % 2) * 18}" y="${66 + Math.floor(i / 2) * 13}" width="10" height="9" rx="1.5"/>`).join("")}
+          <rect class="escudo" x="146" y="54" width="54" height="57" rx="6"/>
         </g>
-        <g class="tiros">
-          <circle class="tiro t1" r="3.5"/><circle class="tiro t2" r="3.5"/><circle class="tiro t3" r="3.5"/>
-        </g>
+        <!-- trajetória fantasma (∩) -->
+        <path class="trilha" d="M32 99 Q 112 -30 173 66"/>
+        <!-- mísseis no arco -->
+        <g class="missil m1"><path class="rastro" d="M-6 0 L-18 0"/><path class="corpo" d="M-7 0 L5 0"/><path class="ponta" d="M5 -3 L11 0 L5 3 Z"/></g>
+        <g class="missil m2"><path class="rastro" d="M-6 0 L-18 0"/><path class="corpo" d="M-7 0 L5 0"/><path class="ponta" d="M5 -3 L11 0 L5 3 Z"/></g>
+        <g class="missil m3"><path class="rastro" d="M-6 0 L-18 0"/><path class="corpo" d="M-7 0 L5 0"/><path class="ponta" d="M5 -3 L11 0 L5 3 Z"/></g>
+        <!-- impacto no prédio -->
+        <g class="impacto"><circle r="3"/><path class="estilhaco" d="M0 -11 V-5 M0 11 V5 M-11 0 H-5 M11 0 H5 M-8 -8 L-4 -4 M8 8 L4 4 M8 -8 L4 -4 M-8 8 L-4 4"/></g>
       </svg>`,
     ia: `
       <svg viewBox="0 0 220 120" class="cena-svg" aria-hidden="true">
@@ -124,8 +132,38 @@
       </svg>`,
   };
 
+  // glifos das ferramentas que orbitam o olho (viewBox 0 0 24 24)
+  const ORBES = [
+    ["segredos", `<circle cx="10" cy="10" r="6"/><line x1="15" y1="15" x2="21" y2="21"/>`],
+    ["codigo", `<path d="M9 8l-5 4 5 4"/><path d="M15 8l5 4-5 4"/>`],
+    ["dependencias", `<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>`],
+    ["pacotes", `<path d="M4 9a12 12 0 0 1 16 0"/><path d="M7 12a8 8 0 0 1 10 0"/><circle cx="12" cy="16" r="1.4"/>`],
+    ["portas", `<circle cx="12" cy="12" r="8"/><path d="M12 12l6-3"/><circle cx="12" cy="12" r="1.5"/>`],
+    ["web", `<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4c3 3 3 13 0 16M12 4c-3 3-3 13 0 16"/>`],
+    ["ataque", `<path d="M12 3c4 2 5 7 4 11l-4 4-4-4c-1-4 0-9 4-11z"/><circle cx="12" cy="10" r="1.6"/><path d="M8 17l-2 4 4-2M16 17l2 4-4-2"/>`],
+    ["ia", `<rect x="7" y="7" width="10" height="10" rx="2"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>`],
+  ];
+
   function montar(palco) {
     if (!palco) return { ativar() {}, ocioso() {} };
+
+    // glow ao fundo + anel de ferramentas orbitando (só aparecem no estado "vigiando")
+    const glow = document.createElement("div");
+    glow.className = "palco-glow";
+    glow.setAttribute("aria-hidden", "true");
+    palco.appendChild(glow);
+
+    const orbita = document.createElement("div");
+    orbita.className = "palco-orbita";
+    orbita.setAttribute("aria-hidden", "true");
+    orbita.innerHTML = `<div class="orbita-anel">` + ORBES.map(([k], i) =>
+      `<div class="orbe" data-k="${k}" style="--a:${(i / ORBES.length) * 360}deg">` +
+      `<div class="anti"><span class="ico"><svg viewBox="0 0 24 24">${ORBES[i][1]}</svg></span></div></div>`
+    ).join("") + `</div>`;
+    palco.appendChild(orbita);
+    const orbes = {};
+    orbita.querySelectorAll(".orbe").forEach(o => { orbes[o.dataset.k] = o; });
+
     const caixa = document.createElement("div");
     caixa.className = "palco-ferramenta";
     caixa.setAttribute("aria-hidden", "true");
@@ -134,6 +172,10 @@
     const quadro = caixa.querySelector(".cena-quadro");
     const rotuloTxt = caixa.querySelector(".cena-rotulo span");
     let atual = null;
+
+    function acender(cena) {
+      for (const k in orbes) orbes[k].classList.toggle("on", k === cena);
+    }
 
     return {
       ativar(nome) {
@@ -145,11 +187,13 @@
           quadro.innerHTML = SVG[cena] || SVG.generico;
           atual = cena;
         }
+        acender(cena);
         caixa.classList.add("ativa");
       },
       ocioso() {
         caixa.classList.remove("ativa", "atacando");
         quadro.innerHTML = "";
+        acender(null);
         atual = null;
       },
     };
