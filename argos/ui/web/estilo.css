@@ -522,7 +522,8 @@ body.com-console.console-baixo .toasts { bottom: 80px; }
   animation: orbita-contra 20s linear infinite; transition: color .3s, border-color .3s, box-shadow .3s, background .3s;
 }
 @keyframes orbita-contra { to { transform: rotate(-360deg); } }
-.orbe .ico svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.orbe .ico svg:not(.marca) { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.orbe .ico svg.marca { width: 18px; height: 18px; }  /* logo de marca: mantém o próprio fill */
 .orbe.on .ico { color: #fff; border-color: var(--brilho, #8fd4ff);
   background: rgba(30, 45, 80, .92); box-shadow: 0 0 14px var(--brilho, #8fd4ff); }
 .orbe.on { animation: orbe-salta 1s ease-in-out infinite; }
