@@ -95,6 +95,7 @@ class Finding:
         return self.severidade.peso
 
     def to_dict(self) -> dict:
+        from .didatica import para_dict  # import tardio: didatica importa schema
         return {
             "id": self.id,
             "titulo": self.titulo,
@@ -111,4 +112,5 @@ class Finding:
             "explicacao": self.explicacao,
             "sugestao_ia": self.sugestao_ia,
             "fonte_explicacao": self.fonte_explicacao,
+            "didatica": para_dict(self),
         }

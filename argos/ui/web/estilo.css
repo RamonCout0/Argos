@@ -533,3 +533,18 @@ body.com-console.console-baixo .toasts { bottom: 80px; }
   .orbita-anel, .orbe .ico, .orbe.on, .palco-glow { animation: none !important; }
 }
 @media (max-width: 760px) { .orbe { transform: rotate(var(--a)) translate(112px); } }
+
+/* ---------- Fase D: didática do achado ---------- */
+.didatica { margin: 10px 0 4px; }
+.didatica-grau { display: inline-flex; align-items: baseline; gap: 8px; padding: 5px 11px; border-radius: 9px;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(143,212,255,.16); }
+.didatica-grau b { font-size: 13px; letter-spacing: .02em; }
+.didatica-grau small { color: var(--sub); font-size: 11px; }
+.didatica-grau.s-critico b { color: #ff7a93; } .didatica-grau.s-alto b { color: #ffa270; }
+.didatica-grau.s-medio b { color: #ffd27a; } .didatica-grau.s-baixo b { color: #8fd4ff; }
+.didatica-grau.s-info b { color: var(--sub); }
+.didatica-comum { margin: 8px 0 0; color: var(--sub); font-size: 13px; line-height: 1.5; }
+.didatica-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.didatica-links a { font-size: 12px; color: #bfe0ff; text-decoration: none;
+  padding: 5px 10px; border-radius: 8px; background: rgba(60,120,220,.12); border: 1px solid rgba(143,212,255,.22); }
+.didatica-links a:hover { background: rgba(60,120,220,.24); border-color: var(--brilho); }

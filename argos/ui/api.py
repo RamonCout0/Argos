@@ -24,6 +24,7 @@ from ..core.aceitos import fingerprint
 from ..core import aceitos as mod_aceitos
 from ..core import orchestrator as orq
 from ..core import progresso
+from .. import didatica
 from ..ai.narrator import narrar
 from ..ai.ollama import Ollama, MODELO_PADRAO
 from ..report.html import render_html
@@ -72,6 +73,7 @@ class ApiArgos:
             "explicacao": f.explicacao, "fonte": f.fonte_explicacao, "sugestao": f.sugestao_ia,
             "verificacao": f.verificacao, "conta": conta,
             "feito": conta and est.marcado(self._estado, chave, fp),
+            "didatica": didatica.para_dict(f),
         }
 
     def _lgpd(self, chave: str) -> list[dict]:

@@ -275,14 +275,36 @@
       s.appendChild(el(codigo ? "pre" : "p", null, texto));
       caixa.appendChild(s);
     };
+    const d = f.didatica;
+    if (d) {
+      const faixa = el("div", "didatica");
+      const grau = el("div", "didatica-grau s-" + f.sev);
+      grau.appendChild(el("b", null, d.cvss_rotulo));
+      if (d.cvss_faixa && d.cvss_faixa !== "—") grau.appendChild(el("small", null, "CVSS ~" + d.cvss_faixa + " (aprox.)"));
+      faixa.appendChild(grau);
+      if (d.quao_comum) faixa.appendChild(el("p", "didatica-comum", d.quao_comum));
+      caixa.appendChild(faixa);
+    }
     sec("EVIDÊNCIA", f.evidencia, true);
-    sec("POR QUE IMPORTA", f.explicacao, false, f.fonte === "ia" ? "IA" : "");
+    sec("POR QUE IMPORTA", f.explicacao || (d && d.por_que), false, f.fonte === "ia" ? "IA" : "");
     if (f.fix) {
       sec(f.fix.tipo === "deterministico" ? "CORREÇÃO EXATA" : "CORREÇÃO A REVISAR", f.fix.descricao);
       if (f.fix.patch) caixa.lastChild.appendChild(el("pre", null, f.fix.patch));
     }
     sec("SUGESTÃO DA IA — CONFIRA ANTES DE APLICAR", f.sugestao, true);
     sec("COMO CONFIRMAR", f.verificacao);
+    if (d && d.links && d.links.length) {
+      const s = el("div", "sec");
+      s.appendChild(el("small", null, "APROFUNDAR"));
+      const ul = el("div", "didatica-links");
+      d.links.forEach(l => {
+        const a = el("a", null, l.rot);
+        a.href = l.url; a.target = "_blank"; a.rel = "noreferrer";
+        ul.appendChild(a);
+      });
+      s.appendChild(ul);
+      caixa.appendChild(s);
+    }
     if (f.conta) {
       const acoes = el("div", "acoes");
       const marcar = el("button", "btn", f.feito ? "Desmarcar" : "Marcar como corrigida");
